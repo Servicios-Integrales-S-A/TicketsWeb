@@ -1,0 +1,30 @@
+/* ── Inputs, selects y textareas ── */
+.form-control,
+.form-select {
+  border-radius: 10px !important;
+}
+
+/* ── Botones ── */
+.btn {
+  border-radius: 50rem !important;
+}
+
+/* ── Input groups: solo redondear extremos ── */
+.input-group .form-control,
+.input-group .form-select {
+  border-radius: 0 !important;
+}
+.input-group .form-control:first-child,
+.input-group .form-select:first-child {
+  border-radius: 10px 0 0 10px !important;
+}
+.input-group .form-control:last-child,
+.input-group .form-select:last-child {
+  border-radius: 0 10px 10px 0 !important;
+}
+.input-group .btn:first-child {
+  border-radius: 10px 0 0 10px !important;
+}
+.input-group .btn:last-child {
+  border-radius: 0 10px 10px 0 !important;
+}

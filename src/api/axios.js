@@ -12,11 +12,13 @@ api.interceptors.request.use(config => {
   return config
 })
 
-// Manejar 401 globalmente → limpiar sesión y redirigir a login
+// Manejar 401 globalmente — solo redirige si había sesión activa
+// Si no hay token (ej. login fallido), deja pasar el error al componente
 api.interceptors.response.use(
   res => res,
   err => {
-    if (err.response?.status === 401) {
+    const tieneToken = !!localStorage.getItem('token')
+    if (err.response?.status === 401 && tieneToken) {
       localStorage.removeItem('token')
       localStorage.removeItem('usuario')
       window.location.href = '/login'
