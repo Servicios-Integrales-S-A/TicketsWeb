@@ -35,26 +35,28 @@
       </div>
 
       <div class="d-flex align-items-center gap-2">
-        <div class="btn-group">
-          <button
-            class="btn btn-sm"
-            :class="vista === 'lista' ? 'btn-secondary' : 'btn-outline-secondary'"
-            @click="vista = 'lista'"
-            title="Vista lista"
-          >
-            <i class="bi bi-list-ul"></i>
-          </button>
-          <button
-            class="btn btn-sm"
-            :class="vista === 'board' ? 'btn-secondary' : 'btn-outline-secondary'"
-            @click="vista = 'board'"
-            title="Vista tablero"
-          >
-            <i class="bi bi-kanban"></i>
-          </button>
+        <div class="btn-toolbar" role="toolbar">
+          <div class="btn-group me-2">
+            <button
+                class="btn btn-sm"
+                :class="vista === 'lista' ? 'btn-secondary' : 'btn-outline-secondary'"
+                @click="vista = 'lista'"
+                title="Vista lista"
+            >
+              <i class="bi bi-list-ul"></i>
+            </button>
+          </div>
+            <div class="btn-group me-2">
+            <button
+                class="btn btn-sm"
+                :class="vista === 'board' ? 'btn-secondary' : 'btn-outline-secondary'"
+                @click="vista = 'board'"
+                title="Vista tablero"
+            >
+              <i class="bi bi-kanban"></i>
+            </button>
+          </div>
         </div>
-
-        <div class="vr"></div>
 
         <button class="btn btn-primary" @click="mostrarCrear = true">
           <i class="bi bi-plus-lg me-1"></i> Nuevo ticket
@@ -215,6 +217,10 @@ const vista        = ref('lista')
 watch(vista, () => {
   pagina.value = 1
   cargarTickets()
+})
+
+watch(() => route.name, (to, from) => {
+  if (from === 'tickets-detalle' && to === 'tickets') cargarTickets()
 })
 
 const filtros = reactive({ busqueda: '', estado: '', prioridad: '' })
