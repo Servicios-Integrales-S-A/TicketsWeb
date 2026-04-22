@@ -30,14 +30,22 @@
       <div class="invalid-feedback">{{ errores.descripcion }}</div>
     </div>
 
+    <!-- Cliente (solo agente/admin) -->
     <div v-if="!esCliente" class="mb-3">
-      <label class="form-label">Cliente</label>
-      <select class="form-select" disabled>
-        <option>Próximamente — búsqueda de clientes</option>
-      </select>
+      <label class="form-label">Cliente <span class="text-danger">*</span></label>
+      <SearchableSelect
+        v-model="form.id_cliente"
+        :options="clienteOptions"
+        placeholder="Seleccione o busque un cliente..."
+        add-label="Agregar nuevo cliente"
+        :invalid="!!errores.id_cliente"
+      />
+      <div v-if="errores.id_cliente" class="text-danger mt-1" style="font-size: 0.875em;">
+        {{ errores.id_cliente }}
+      </div>
     </div>
 
-    <div class="row g-2">
+    <div class="row g-2 mb-3">
       <div v-if="!esCliente" class="col-6">
         <label class="form-label d-block">Prioridad</label>
         <ColorBadgeSelect
@@ -58,7 +66,19 @@
       </div>
     </div>
 
-    <div v-if="errorServidor" class="alert alert-danger py-2 mt-3 mb-0" style="font-size: 0.875rem;">
+    <!-- Agente (solo agente/admin) -->
+    <div v-if="!esCliente" class="mb-3">
+      <label class="form-label">Agente asignado</label>
+      <SearchableSelect
+        v-model="form.id_agente"
+        :options="agenteOptions"
+        placeholder="Auto-asignar por menor carga"
+        add-label="Auto-asignar por menor carga"
+        add-action="reset"
+      />
+    </div>
+
+    <div v-if="errorServidor" class="alert alert-danger py-2 mb-0" style="font-size: 0.875rem;">
       <i class="bi bi-exclamation-circle me-1"></i>{{ errorServidor }}
     </div>
   </AppModal>
@@ -68,8 +88,9 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useStore } from 'vuex'
 import api from '@/api/axios'
-import AppModal         from '@/components/ui/AppModal.vue'
-import ColorBadgeSelect from '@/components/ui/ColorBadgeSelect.vue'
+import AppModal          from '@/components/ui/AppModal.vue'
+import ColorBadgeSelect  from '@/components/ui/ColorBadgeSelect.vue'
+import SearchableSelect  from '@/components/ui/SearchableSelect.vue'
 
 const PRIOR_OPTIONS = [
   { value: 'bajo',    label: 'Bajo',    color: { bg: '#6c757d', text: '#fff' } },
@@ -82,9 +103,26 @@ const emit = defineEmits(['close', 'creado'])
 
 const store     = useStore()
 const esCliente = computed(() => store.getters['auth/rol'] === 'cliente')
-const usuario   = computed(() => store.getters['auth/usuario'])
 
 const categorias    = ref([])
+const agentes       = ref([])
+const clientes      = ref([])
+
+const clienteOptions = computed(() =>
+  clientes.value.map(c => ({
+    value:    c.id,
+    label:    `${c.nombre} ${c.apellido}`,
+    sublabel: c.email,
+  }))
+)
+
+const agenteOptions = computed(() =>
+  agentes.value.map(a => ({
+    value:    a.id,
+    label:    `${a.nombre} ${a.apellido}`,
+    sublabel: a.email,
+  }))
+)
 const errores       = ref({})
 const errorServidor = ref(null)
 const cargando      = ref(false)
@@ -94,22 +132,31 @@ const form = reactive({
   descripcion:  '',
   prioridad:    'medio',
   id_categoria: '',
+  id_cliente:   '',
+  id_agente:    '',
 })
 
 onMounted(async () => {
-  try {
-    const { data } = await api.get('/api/categorias', { params: { limit: 100, activo: true } })
-    categorias.value = data.datos ?? []
-  } catch {
-    categorias.value = []
+  const requests = [
+    api.get('/api/categorias', { params: { limit: 100, activo: true } }),
+  ]
+  if (!esCliente.value) {
+    requests.push(api.get('/api/usuarios/agentes'))
+    requests.push(api.get('/api/usuarios/clientes'))
   }
+
+  const [resCat, resAg, resCli] = await Promise.allSettled(requests)
+  if (resCat.status === 'fulfilled') categorias.value = resCat.value.data.datos ?? []
+  if (resAg?.status  === 'fulfilled') agentes.value   = resAg.value.data  ?? []
+  if (resCli?.status === 'fulfilled') clientes.value  = resCli.value.data ?? []
 })
 
 const validar = () => {
   const e = {}
-  if (!form.titulo.trim())      e.titulo       = 'El título es requerido.'
-  if (!form.descripcion.trim()) e.descripcion  = 'La descripción es requerida.'
-  if (!form.id_categoria)       e.id_categoria = 'Selecciona una categoría.'
+  if (!form.titulo.trim())                e.titulo       = 'El título es requerido.'
+  if (!form.descripcion.trim())           e.descripcion  = 'La descripción es requerida.'
+  if (!form.id_categoria)                 e.id_categoria = 'Selecciona una categoría.'
+  if (!esCliente.value && !form.id_cliente) e.id_cliente = 'Selecciona un cliente.'
   errores.value = e
   return Object.keys(e).length === 0
 }
@@ -119,14 +166,18 @@ const submit = async () => {
   if (!validar()) return
   cargando.value = true
   try {
-    await api.post('/api/tickets', {
+    const payload = {
       titulo:       form.titulo.trim(),
       descripcion:  form.descripcion.trim(),
       prioridad:    form.prioridad,
       canal:        'web',
       id_categoria: form.id_categoria,
-      ...(!esCliente.value && { id_cliente: usuario.value?.id }),
-    })
+    }
+    if (!esCliente.value) {
+      payload.id_cliente = form.id_cliente
+      if (form.id_agente) payload.id_agente = form.id_agente
+    }
+    await api.post('/api/tickets', payload)
     emit('creado')
   } catch (err) {
     errorServidor.value = err.response?.data?.mensaje || 'Error al crear el ticket.'
