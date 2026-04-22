@@ -3,6 +3,8 @@
     :titulo="ticket?.numero_legible ?? '...'"
     cancel-label="Cerrar"
     size="lg"
+    scrollable
+    body-class="overflow-hidden d-flex flex-column"
     @close="cerrar"
   >
     <!-- Cargando -->
@@ -16,95 +18,112 @@
     </div>
 
     <!-- Contenido -->
-    <div v-else-if="ticket" class="row g-0">
+    <template v-else-if="ticket">
 
-      <!-- ── Columna principal ────────────────────────────────────────────── -->
-      <div class="col-12 col-lg-8 pe-lg-4">
-        <h6 class="fw-semibold mb-2" style="font-size: 1rem;">{{ ticket.titulo }}</h6>
+      <!-- ── Sección fija: descripción + sidebar ── -->
+      <div class="row g-0 mb-4 flex-shrink-0">
 
-        <p class="text-muted mb-4" style="white-space: pre-wrap; font-size: 0.9rem; line-height: 1.6;">
-          {{ ticket.descripcion }}
-        </p>
+        <div class="col-12 col-lg-8 pe-lg-4">
+          <h6 class="fw-semibold mb-2" style="font-size: 1rem;">{{ ticket.titulo }}</h6>
 
-        <div class="d-flex flex-wrap gap-3 text-muted" style="font-size: 0.8rem;">
-          <span><i class="bi bi-broadcast me-1"></i>{{ labelCanal(ticket.canal) }}</span>
-          <span><i class="bi bi-calendar3 me-1"></i>Creado {{ formatFecha(ticket.creado_en) }}</span>
-          <span v-if="ticket.actualizado_en">
-            <i class="bi bi-pencil me-1"></i>Editado {{ formatFecha(ticket.actualizado_en) }}
-          </span>
-          <span v-if="ticket.fecha_cierre" class="text-success">
-            <i class="bi bi-check2-circle me-1"></i>Cerrado {{ formatFecha(ticket.fecha_cierre) }}
-          </span>
-        </div>
-      </div>
+          <p class="text-muted mb-4" style="white-space: pre-wrap; font-size: 0.9rem; line-height: 1.6;">
+            {{ ticket.descripcion }}
+          </p>
 
-      <!-- ── Sidebar ─────────────────────────────────────────────────────── -->
-      <div class="col-12 col-lg-4 border-start ps-lg-4 mt-4 mt-lg-0">
-
-        <div class="mb-3">
-          <div class="sidebar-label">Estado</div>
-          <ColorBadgeSelect
-            v-if="!esCliente"
-            v-model="form.estado"
-            :options="ESTADO_OPTIONS"
-          />
-          <span v-else :class="['badge', badgeEstado(ticket.estado)]">{{ labelEstado(ticket.estado) }}</span>
-        </div>
-
-        <div class="mb-3">
-          <div class="sidebar-label">Prioridad</div>
-          <ColorBadgeSelect
-            v-if="!esCliente"
-            v-model="form.prioridad"
-            :options="PRIOR_OPTIONS"
-          />
-          <span v-else :class="['badge', badgePrioridad(ticket.prioridad)]">{{ labelPrioridad(ticket.prioridad) }}</span>
-        </div>
-
-        <div class="mb-3">
-          <div class="sidebar-label">Categoría</div>
-          <select
-            v-if="!esCliente"
-            class="form-select form-select-sm"
-            v-model="form.id_categoria"
-          >
-            <option v-for="cat in categorias" :key="cat.id" :value="cat.id">{{ cat.nombre }}</option>
-          </select>
-          <span v-else class="fw-medium" style="font-size: 0.9rem;">{{ ticket.categoria }}</span>
-        </div>
-
-        <hr class="my-3">
-
-        <div class="mb-3">
-          <div class="sidebar-label">Agente</div>
-          <select
-            v-if="!esCliente"
-            class="form-select form-select-sm"
-            v-model="form.id_agente"
-          >
-            <option value="">Sin asignar</option>
-            <option v-for="ag in agentes" :key="ag.id" :value="ag.id">
-              {{ ag.nombre }} {{ ag.apellido }}
-            </option>
-          </select>
-          <template v-else>
-            <div class="fw-medium" style="font-size: 0.9rem;">
-              {{ ticket.agente_nombre }} {{ ticket.agente_apellido }}
-            </div>
-            <small class="text-muted">{{ ticket.agente_email ?? 'Sin asignar' }}</small>
-          </template>
-        </div>
-
-        <div>
-          <div class="sidebar-label">Cliente</div>
-          <div class="fw-medium" style="font-size: 0.9rem;">
-            {{ ticket.cliente_nombre }} {{ ticket.cliente_apellido }}
+          <div class="d-flex flex-wrap gap-3 text-muted" style="font-size: 0.8rem;">
+            <span><i class="bi bi-broadcast me-1"></i>{{ labelCanal(ticket.canal) }}</span>
+            <span><i class="bi bi-calendar3 me-1"></i>Creado {{ formatFecha(ticket.creado_en) }}</span>
+            <span v-if="ticket.actualizado_en">
+              <i class="bi bi-pencil me-1"></i>Editado {{ formatFecha(ticket.actualizado_en) }}
+            </span>
+            <span v-if="ticket.fecha_cierre" class="text-success">
+              <i class="bi bi-check2-circle me-1"></i>Cerrado {{ formatFecha(ticket.fecha_cierre) }}
+            </span>
           </div>
-          <small class="text-muted">{{ ticket.cliente_email }}</small>
         </div>
 
+        <div class="col-12 col-lg-4 border-start ps-lg-4 mt-4 mt-lg-0">
+
+          <div class="mb-3">
+            <div class="sidebar-label">Estado</div>
+            <ColorBadgeSelect v-if="!esCliente" v-model="form.estado" :options="ESTADO_OPTIONS" />
+            <span v-else :class="['badge', badgeEstado(ticket.estado)]">{{ labelEstado(ticket.estado) }}</span>
+          </div>
+
+          <div class="mb-3">
+            <div class="sidebar-label">Prioridad</div>
+            <ColorBadgeSelect v-if="!esCliente" v-model="form.prioridad" :options="PRIOR_OPTIONS" />
+            <span v-else :class="['badge', badgePrioridad(ticket.prioridad)]">{{ labelPrioridad(ticket.prioridad) }}</span>
+          </div>
+
+          <div class="mb-3">
+            <div class="sidebar-label">Categoría</div>
+            <select v-if="!esCliente" class="form-select form-select-sm" v-model="form.id_categoria">
+              <option v-for="cat in categorias" :key="cat.id" :value="cat.id">{{ cat.nombre }}</option>
+            </select>
+            <span v-else class="fw-medium" style="font-size: 0.9rem;">{{ ticket.categoria }}</span>
+          </div>
+
+          <hr class="my-3">
+
+          <div class="mb-3">
+            <div class="sidebar-label">Agente</div>
+            <select v-if="!esCliente" class="form-select form-select-sm" v-model="form.id_agente">
+              <option value="">Sin asignar</option>
+              <option v-for="ag in agentes" :key="ag.id" :value="ag.id">
+                {{ ag.nombre }} {{ ag.apellido }}
+              </option>
+            </select>
+            <template v-else>
+              <div class="fw-medium" style="font-size: 0.9rem;">
+                {{ ticket.agente_nombre }} {{ ticket.agente_apellido }}
+              </div>
+              <small class="text-muted">{{ ticket.agente_email ?? 'Sin asignar' }}</small>
+            </template>
+          </div>
+
+          <div>
+            <div class="sidebar-label">Cliente</div>
+            <div class="fw-medium" style="font-size: 0.9rem;">
+              {{ ticket.cliente_nombre }} {{ ticket.cliente_apellido }}
+            </div>
+            <small class="text-muted">{{ ticket.cliente_email }}</small>
+          </div>
+
+        </div>
       </div>
-    </div>
+
+      <!-- ── Tabs + contenido scrollable ── -->
+      <div class="tabs-section">
+        <ul class="nav nav-tabs flex-shrink-0" style="font-size: 0.875rem;">
+          <li class="nav-item">
+            <button class="nav-link" :class="{ active: tab === 'notas' }" @click="tab = 'notas'">
+              <i class="bi bi-chat-left-text me-1"></i>Conversación
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" :class="{ active: tab === 'historial' }" @click="tab = 'historial'">
+              <i class="bi bi-clock-history me-1"></i>Historial
+            </button>
+          </li>
+        </ul>
+
+        <div class="tab-content-area">
+          <TicketNotasTab
+            v-show="tab === 'notas'"
+            ref="notasRef"
+            :ticket-id="route.params.id"
+            :es-cliente="esCliente"
+          />
+          <TicketHistorialTab
+            v-show="tab === 'historial'"
+            ref="historialRef"
+            :ticket-id="route.params.id"
+          />
+        </div>
+      </div>
+
+    </template>
 
     <!-- ── Footer ── -->
     <template #footer>
@@ -131,8 +150,10 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useStore } from 'vuex'
 import api from '@/api/axios'
-import AppModal         from '@/components/ui/AppModal.vue'
-import ColorBadgeSelect from '@/components/ui/ColorBadgeSelect.vue'
+import AppModal          from '@/components/ui/AppModal.vue'
+import ColorBadgeSelect  from '@/components/ui/ColorBadgeSelect.vue'
+import TicketNotasTab    from '@/components/tickets/TicketNotasTab.vue'
+import TicketHistorialTab from '@/components/tickets/TicketHistorialTab.vue'
 
 const route  = useRoute()
 const router = useRouter()
@@ -148,9 +169,11 @@ const guardando    = ref(false)
 const error        = ref(null)
 const errorGuardar = ref(null)
 
-// form = copia editable de los campos que el usuario puede cambiar
+const tab         = ref('notas')
+const notasRef    = ref(null)
+const historialRef = ref(null)
+
 const form     = reactive({ estado: '', prioridad: '', id_categoria: '', id_agente: '' })
-// original = snapshot al momento de cargar (o después de guardar) para detectar cambios
 const original = reactive({ estado: '', prioridad: '', id_categoria: '', id_agente: '' })
 
 const hayCambios = computed(() =>
@@ -219,7 +242,6 @@ const guardar = async () => {
   try {
     await api.patch(`/api/tickets/${ticket.value.id}`, campos)
 
-    // Actualizar nombres de visualización en el ticket
     if (campos.id_agente) {
       const ag = agentes.value.find(a => a.id === campos.id_agente)
       if (ag) {
@@ -237,8 +259,8 @@ const guardar = async () => {
       if (cat) ticket.value.categoria = cat.nombre
     }
     Object.assign(ticket.value, campos)
-
     Object.assign(original, form)
+    historialRef.value?.cargar()
   } catch {
     errorGuardar.value = 'No se pudieron guardar los cambios.'
     Object.assign(form, original)
@@ -286,5 +308,21 @@ const formatFecha = f =>
   letter-spacing: 0.05em;
   color: #6c757d;
   margin-bottom: 0.35rem;
+}
+
+.tabs-section {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tab-content-area {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding-top: 0.75rem;
 }
 </style>
