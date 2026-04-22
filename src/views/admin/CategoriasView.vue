@@ -2,32 +2,24 @@
   <div class="d-flex flex-column" style="height: 100%;">
 
     <!-- Barra superior -->
-    <div class="d-flex align-items-center justify-content-between mb-3 gap-2 flex-wrap flex-shrink-0">
-
-      <div class="d-flex gap-2 flex-wrap align-items-center">
-        <div class="input-group" style="width: 240px;">
-          <span class="input-group-text bg-white border-end-0">
-            <i class="bi bi-search text-muted" style="font-size: 0.85rem;"></i>
-          </span>
-          <input
-            type="text"
-            class="form-control border-start-0 ps-0"
-            placeholder="Buscar categoría..."
-            v-model="filtros.busqueda"
-          />
-        </div>
-
+    <ViewToolbar
+      v-model="filtros.busqueda"
+      search-placeholder="Buscar categoría..."
+      search-width="240px"
+    >
+      <template #filters>
         <select class="form-select" v-model="filtros.activo" @change="reiniciar" style="width: 145px;">
           <option value="">Todos los estados</option>
           <option value="true">Activas</option>
           <option value="false">Inactivas</option>
         </select>
-      </div>
-
-      <button class="btn btn-primary" @click="abrirModal(null)">
-        <i class="bi bi-plus-lg me-1"></i> Nueva categoría
-      </button>
-    </div>
+      </template>
+      <template #actions>
+        <button class="btn btn-primary" @click="abrirModal(null)">
+          <i class="bi bi-plus-lg me-1"></i> Nueva categoría
+        </button>
+      </template>
+    </ViewToolbar>
 
     <!-- Tabla -->
     <AppTable
@@ -91,6 +83,7 @@
 import { ref, reactive, watch, onMounted } from 'vue'
 import api from '@/api/axios'
 import AppTable       from '@/components/ui/AppTable.vue'
+import ViewToolbar    from '@/components/ui/ViewToolbar.vue'
 import CategoriaModal from '@/components/categorias/CategoriaModal.vue'
 
 const categorias          = ref([])

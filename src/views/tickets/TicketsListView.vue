@@ -2,21 +2,12 @@
   <div class="d-flex flex-column" style="height: 100%;">
 
     <!-- Barra superior -->
-    <div class="d-flex align-items-center justify-content-between mb-3 gap-2 flex-wrap flex-shrink-0">
-
-      <div class="d-flex gap-2 flex-wrap align-items-center">
-        <div class="input-group" style="width: 220px;">
-          <span class="input-group-text bg-white border-end-0">
-            <i class="bi bi-search text-muted" style="font-size: 0.85rem;"></i>
-          </span>
-          <input
-            type="text"
-            class="form-control border-start-0 ps-0"
-            placeholder="Buscar por título..."
-            v-model="filtros.busqueda"
-          />
-        </div>
-
+    <ViewToolbar
+      v-model="filtros.busqueda"
+      search-placeholder="Buscar por título..."
+      search-width="220px"
+    >
+      <template #filters>
         <select class="form-select" v-model="filtros.estado" @change="cargarTickets" style="width: 160px;">
           <option value="">Todos los estados</option>
           <option value="abierto">Abierto</option>
@@ -24,7 +15,6 @@
           <option value="resuelto">Resuelto</option>
           <option value="cerrado">Cerrado</option>
         </select>
-
         <select v-if="!esCliente" class="form-select" v-model="filtros.prioridad" @change="cargarTickets" style="width: 170px;">
           <option value="">Todas las prioridades</option>
           <option value="bajo">Bajo</option>
@@ -32,10 +22,9 @@
           <option value="alto">Alto</option>
           <option value="critico">Crítico</option>
         </select>
-      </div>
-
-      <div class="d-flex align-items-center gap-2">
-        <div class="btn-toolbar" role="toolbar">
+      </template>
+      <template #actions>
+        <div v-if="!esCliente" class="btn-toolbar" role="toolbar">
           <div class="btn-group me-2">
             <button
                 class="btn btn-sm"
@@ -57,12 +46,11 @@
             </button>
           </div>
         </div>
-
         <button class="btn btn-primary" @click="mostrarCrear = true">
           <i class="bi bi-plus-lg me-1"></i> Nuevo ticket
         </button>
-      </div>
-    </div>
+      </template>
+    </ViewToolbar>
 
     <!-- Vista lista -->
     <AppTable
@@ -194,6 +182,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useStore } from 'vuex'
 import api from '@/api/axios'
 import AppTable          from '@/components/ui/AppTable.vue'
+import ViewToolbar       from '@/components/ui/ViewToolbar.vue'
 import ColorBadgeSelect  from '@/components/ui/ColorBadgeSelect.vue'
 import CrearTicketModal  from '@/components/tickets/CrearTicketModal.vue'
 import TicketsBoardView  from '@/components/tickets/TicketsBoardView.vue'
