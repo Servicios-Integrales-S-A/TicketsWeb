@@ -52,6 +52,7 @@ const rol           = computed(() => store.getters['auth/rol'])
 const nombreCompleto = computed(() => store.getters['auth/nombreCompleto'])
 
 const TITULOS = {
+  'home':             'Inicio',
   'tickets':          'Tickets',
   'tickets-detalle':  'Tickets',
   'perfil':           'Mi Perfil',

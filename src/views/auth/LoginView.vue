@@ -79,7 +79,7 @@ const submit = async () => {
   cargando.value = true
   try {
     await store.dispatch('auth/login', form)
-    router.push({ name: 'tickets' })
+    router.push({ name: 'home' })
   } catch (err) {
     errorServidor.value = err.response?.data?.mensaje || 'Error al iniciar sesión.'
   } finally {

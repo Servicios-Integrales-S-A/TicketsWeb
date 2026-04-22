@@ -21,6 +21,11 @@
         </small>
       </div>
 
+      <router-link :to="{ name: 'home' }" class="sidebar-link d-flex align-items-center gap-2 px-3 py-2 text-decoration-none">
+        <i class="bi bi-house fs-5"></i>
+        <span>Inicio</span>
+      </router-link>
+
       <router-link :to="{ name: 'tickets' }" class="sidebar-link d-flex align-items-center gap-2 px-3 py-2 text-decoration-none">
         <i class="bi bi-ticket-perforated fs-5"></i>
         <span>Tickets</span>

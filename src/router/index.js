@@ -44,8 +44,10 @@ const routes = [
       { path: 'admin/categorias', name: 'admin-categorias', meta: { roles: ['admin'] }, component: () => import('@/views/admin/CategoriasView.vue') },
       { path: 'admin/reglas',     name: 'admin-reglas',     meta: { roles: ['admin'] }, component: () => import('@/views/admin/ReglasView.vue') },
 
-      // Redirigir / a tickets
-      { path: '', redirect: '/tickets' },
+      { path: 'home', name: 'home', component: () => import('@/views/HomeView.vue') },
+
+      // Redirigir / a home
+      { path: '', redirect: '/home' },
     ],
   },
 
@@ -70,14 +72,14 @@ router.beforeEach((to, from, next) => {
     return next({ name: 'login' })
   }
 
-  // Con sesión intentando acceder a rutas públicas → tickets
+  // Con sesión intentando acceder a rutas públicas → home
   if (!requiresAuth && isAuthenticated && to.name !== 'not-found') {
-    return next({ name: 'tickets' })
+    return next({ name: 'home' })
   }
 
-  // Rol no permitido → tickets
+  // Rol no permitido → home
   if (rolesPermitidos && !rolesPermitidos.includes(rolUsuario)) {
-    return next({ name: 'tickets' })
+    return next({ name: 'home' })
   }
 
   next()
