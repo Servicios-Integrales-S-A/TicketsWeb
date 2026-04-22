@@ -1,5 +1,5 @@
 <template>
-  <aside class="app-sidebar d-flex flex-column bg-dark text-white" style="width: 240px; min-height: 100vh;">
+  <aside class="app-sidebar d-flex flex-column bg-dark text-white" style="width: 240px; height: 100vh; flex-shrink: 0;">
 
     <!-- Logo -->
     <div class="px-3 py-4 border-bottom border-secondary">
@@ -7,16 +7,16 @@
         <i class="bi bi-ticket-perforated-fill text-primary fs-4"></i>
         <span class="fw-semibold lh-sm" style="font-size: 0.85rem;">
           Servicios Integrales<br>
-          <small class="text-muted fw-normal">Sistema de Tickets</small>
+          <small class="fw-normal">Sistema de Tickets</small>
         </span>
       </div>
     </div>
 
     <!-- Navegación -->
-    <nav class="flex-grow-1 py-3">
+    <nav class="flex-grow-1 py-3 overflow-y-auto">
 
       <div class="px-3 mb-1">
-        <small class="text-uppercase text-muted" style="font-size: 0.7rem; letter-spacing: 0.08em;">
+        <small class="text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.08em;">
           General
         </small>
       </div>
@@ -33,7 +33,7 @@
 
       <template v-if="rol === 'admin'">
         <div class="px-3 mt-3 mb-1">
-          <small class="text-uppercase text-muted" style="font-size: 0.7rem; letter-spacing: 0.08em;">
+          <small class="text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.08em;">
             Administración
           </small>
         </div>
@@ -62,7 +62,7 @@
         <i class="bi bi-person-circle fs-5"></i>
         <div class="lh-sm overflow-hidden">
           <div class="text-truncate" style="font-size: 0.85rem;">{{ nombreCompleto }}</div>
-          <small class="text-muted text-capitalize">{{ rol }}</small>
+          <small class="text-capitalize">{{ rol }}</small>
         </div>
       </router-link>
     </div>

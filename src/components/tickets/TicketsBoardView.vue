@@ -182,16 +182,11 @@ const COLUMNAS = [
   column-gap: 0.5rem;
   row-gap: 0.35rem;
   align-items: stretch;
-  height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
+  align-content: start;
 }
 
 /* ── Headers ── */
 .board-col-header {
-  position: sticky;
-  top: 0;
-  z-index: 2;
   display: flex;
   align-items: center;
   padding: 0.65rem 0.85rem;

@@ -1,5 +1,5 @@
 <template>
-  <header class="app-navbar d-flex align-items-center justify-content-between px-4 bg-white border-bottom" style="height: 56px;">
+  <header class="app-navbar d-flex align-items-center justify-content-between px-4 bg-white border-bottom" style="height: 56px; flex-shrink: 0;">
 
     <h6 class="mb-0 fw-semibold text-dark">{{ paginaActual }}</h6>
 

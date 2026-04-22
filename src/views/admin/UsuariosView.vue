@@ -2,39 +2,30 @@
   <div class="d-flex flex-column" style="height: 100%;">
 
     <!-- Barra superior -->
-    <div class="d-flex align-items-center justify-content-between mb-3 gap-2 flex-wrap flex-shrink-0">
-
-      <div class="d-flex gap-2 flex-wrap align-items-center">
-        <div class="input-group" style="width: 240px;">
-          <span class="input-group-text bg-white border-end-0">
-            <i class="bi bi-search text-muted" style="font-size: 0.85rem;"></i>
-          </span>
-          <input
-            type="text"
-            class="form-control border-start-0 ps-0"
-            placeholder="Buscar por nombre o email..."
-            v-model="filtros.busqueda"
-          />
-        </div>
-
+    <ViewToolbar
+      v-model="filtros.busqueda"
+      search-placeholder="Buscar por nombre o email..."
+      search-width="240px"
+    >
+      <template #filters>
         <select class="form-select" v-model="filtros.rol" @change="reiniciar" style="width: 155px;">
           <option value="">Todos los roles</option>
           <option value="admin">Administrador</option>
           <option value="agente">Agente</option>
           <option value="cliente">Cliente</option>
         </select>
-
         <select class="form-select" v-model="filtros.activo" @change="reiniciar" style="width: 145px;">
           <option value="">Todos los estados</option>
           <option value="true">Activos</option>
           <option value="false">Inactivos</option>
         </select>
-      </div>
-
-      <button class="btn btn-primary" @click="mostrarCrear = true">
-        <i class="bi bi-plus-lg me-1"></i> Nuevo usuario
-      </button>
-    </div>
+      </template>
+      <template #actions>
+        <button class="btn btn-primary" @click="mostrarCrear = true">
+          <i class="bi bi-plus-lg me-1"></i> Nuevo usuario
+        </button>
+      </template>
+    </ViewToolbar>
 
     <!-- Tabla -->
     <AppTable
@@ -109,6 +100,7 @@
 import { ref, reactive, watch, onMounted } from 'vue'
 import api from '@/api/axios'
 import AppTable           from '@/components/ui/AppTable.vue'
+import ViewToolbar        from '@/components/ui/ViewToolbar.vue'
 import CrearUsuarioModal  from '@/components/usuarios/CrearUsuarioModal.vue'
 import UsuarioDetailModal from '@/components/usuarios/UsuarioDetailModal.vue'
 
