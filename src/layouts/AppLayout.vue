@@ -1,5 +1,5 @@
 <template>
-  <div class="app-wrapper d-flex" style="min-height: 100vh;">
+  <div class="app-wrapper d-flex" style="height: 100vh; overflow: hidden;">
 
     <AppSidebar />
 
