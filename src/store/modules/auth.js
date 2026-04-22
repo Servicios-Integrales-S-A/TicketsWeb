@@ -21,6 +21,10 @@ const mutations = {
     localStorage.setItem('token',   token)
     localStorage.setItem('usuario', JSON.stringify(usuario))
   },
+  UPDATE_USUARIO(state, campos) {
+    state.usuario = { ...state.usuario, ...campos }
+    localStorage.setItem('usuario', JSON.stringify(state.usuario))
+  },
   CLEAR_SESSION(state) {
     state.token   = null
     state.usuario = null
