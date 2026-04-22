@@ -5,29 +5,37 @@
       class="cbs-badge"
       :class="{ 'cbs-badge--block': block }"
       :style="{ background: current.color.bg, color: current.color.text }"
-      @click="isOpen = !isOpen"
+      @click="toggleOpen"
     >
       {{ current.label }}
       <i class="bi bi-chevron-down cbs-chevron" :class="{ 'cbs-chevron--open': isOpen }"></i>
     </button>
 
-    <div v-if="isOpen" class="cbs-dropdown">
-      <button
-        v-for="opt in options"
-        :key="opt.value"
-        type="button"
-        class="cbs-option"
-        :style="{ background: opt.color.bg, color: opt.color.text }"
-        @click="onSelect(opt.value)"
+    <teleport to="body">
+      <div
+          v-if="isOpen"
+          class="cbs-dropdown"
+          :class="{ 'cbs-dropdown--up': openUpwards, 'cbs-dropdown--block': block }"
+          :style="dropdownStyle"
+          @click.stop
       >
-        {{ opt.label }}
-      </button>
-    </div>
+        <button
+          v-for="opt in options"
+          :key="opt.value"
+          type="button"
+          class="cbs-option"
+          :style="{ background: opt.color.bg, color: opt.color.text }"
+          @click="onSelect(opt.value)"
+        >
+          {{ opt.label }}
+        </button>
+      </div>
+    </teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 
 const props = defineProps({
   modelValue: { type: String,  required: true },
@@ -37,12 +45,28 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 
+const uid        = Math.random().toString(36).slice(2)
 const isOpen     = ref(false)
 const wrapperRef = ref(null)
+const openUpwards = ref(false)
+const dropdownStyle = ref({})
 
 const current = computed(() =>
   props.options.find(o => o.value === props.modelValue) ?? props.options[0]
 )
+
+const toggleOpen = () => {
+  if (isOpen.value) {
+    isOpen.value = false
+  } else {
+    isOpen.value = true
+    window.dispatchEvent(new CustomEvent('cbs:open', { detail: uid }))
+  }
+}
+
+const onOtherOpen = (e) => {
+  if (isOpen.value && e.detail !== uid) isOpen.value = false
+}
 
 const onSelect = (value) => {
   emit('update:modelValue', value)
@@ -55,8 +79,39 @@ const onClickOutside = (e) => {
   }
 }
 
-onMounted(()   => document.addEventListener('click', onClickOutside))
-onUnmounted(() => document.removeEventListener('click', onClickOutside))
+const positionDropdown = () => {
+  const wrapper = wrapperRef.value
+  if (!wrapper) return
+
+  const rect = wrapper.getBoundingClientRect()
+  const spaceBelow = window.innerHeight - rect.bottom
+  const estimatedHeight = 264 // max: add-btn + divider + 220px list
+
+  openUpwards.value = spaceBelow < estimatedHeight
+
+  dropdownStyle.value = {
+    position: 'fixed',
+    left: rect.left + 'px',
+    width: rect.width + 'px',
+    zIndex: 9999,
+    ...(openUpwards.value
+      ? { bottom: (window.innerHeight - rect.top + 4) + 'px', top: 'auto' }
+      : { top: (rect.bottom + 4) + 'px', bottom: 'auto' })
+  }
+}
+
+watch(isOpen, (val) => {
+  if (val) nextTick(positionDropdown)
+})
+
+onMounted(() => {
+  document.addEventListener('click', onClickOutside)
+  window.addEventListener('cbs:open', onOtherOpen)
+})
+onUnmounted(() => {
+  document.removeEventListener('click', onClickOutside)
+  window.removeEventListener('cbs:open', onOtherOpen)
+})
 </script>
 
 <style scoped>
@@ -90,10 +145,7 @@ onUnmounted(() => document.removeEventListener('click', onClickOutside))
   border-radius: 10px;
   justify-content: space-between;
 }
-.cbs-wrapper--block .cbs-dropdown {
-  width: 100%;
-}
-.cbs-wrapper--block .cbs-option {
+.cbs-dropdown--block .cbs-option {
   font-size: 0.9rem;
   padding: 0.4em 0.75em;
 }
@@ -107,10 +159,6 @@ onUnmounted(() => document.removeEventListener('click', onClickOutside))
 .cbs-chevron--open { transform: rotate(180deg); }
 
 .cbs-dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  z-index: 1050;
   min-width: 110px;
   padding: 4px;
   background: #fff;

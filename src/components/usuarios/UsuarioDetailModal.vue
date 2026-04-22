@@ -94,11 +94,11 @@
 
         <div class="mb-3">
           <div class="sidebar-label">Rol</div>
-          <select class="form-select form-select-sm" v-model="form.rol">
-            <option value="cliente">Cliente</option>
-            <option value="agente">Agente</option>
-            <option value="admin">Administrador</option>
-          </select>
+          <ColorBadgeSelect
+              v-model="form.rol"
+              :options="ROL_OPTIONS"
+              block
+          />
         </div>
 
         <div class="mb-3">
@@ -167,6 +167,7 @@ import api from '@/api/axios'
 import AppModal    from '@/components/ui/AppModal.vue'
 import AuthInput   from '@/components/ui/AuthInput.vue'
 import PhoneInput  from '@/components/ui/PhoneInput.vue'
+import ColorBadgeSelect from "@/components/ui/ColorBadgeSelect.vue";
 
 const props = defineProps({
   userId: { type: String, required: true },
@@ -295,6 +296,12 @@ const restablecerPassword = async () => {
 
 const formatFecha = f =>
   f ? new Date(f).toLocaleDateString('es-GT', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
+
+const ROL_OPTIONS = [
+  { value: 'cliente',    label: 'Cliente',    color: { bg: '#6c757d', text: '#fff' } },
+  { value: 'agente',   label: 'Agente',   color: { bg: '#0d6efd', text: '#fff' } },
+  { value: 'admin',    label: 'Administrador',    color: { bg: '#dc3545', text: '#fff' } },
+]
 
 onMounted(cargarUsuario)
 </script>
