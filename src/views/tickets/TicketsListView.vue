@@ -159,7 +159,6 @@
       :tickets="ticketsFiltrados"
       :agentes="agentes"
       :cargando="cargando"
-      style="flex: 1; min-height: 0;"
       @ocultar="hideTicket"
     />
 
@@ -257,7 +256,7 @@ const actualizar = async (id, campos) => {
       const cat = categorias.value.find(c => c.id === campos.id_categoria)
       if (cat) t.categoria = cat.nombre
     }
-  } catch {
+  } catch {} finally {
     cargarTickets()
   }
 }
