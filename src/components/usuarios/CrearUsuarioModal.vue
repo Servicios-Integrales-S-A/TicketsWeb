@@ -1,7 +1,7 @@
 <template>
   <AppModal
-    titulo="Nuevo usuario"
-    submit-label="Crear usuario"
+    :titulo="rolFijo === 'cliente' ? 'Nuevo cliente' : 'Nuevo usuario'"
+    submit-label="Crear"
     cargando-label="Creando..."
     :cargando="cargando"
     @close="$emit('close')"
@@ -42,11 +42,11 @@
     </div>
 
     <div class="row g-3">
-      <div class="col-6">
+      <div :class="rolFijo ? 'col-12' : 'col-6'">
         <label class="form-label">Teléfono</label>
         <PhoneInput v-model="form.telefono" />
       </div>
-      <div class="col-6">
+      <div v-if="!rolFijo" class="col-6">
         <label class="form-label">Rol <span class="text-danger">*</span></label>
         <select class="form-select" :class="{ 'is-invalid': errores.rol }" v-model="form.rol">
           <option value="">Seleccionar...</option>
@@ -59,7 +59,7 @@
     </div>
 
     <div v-if="form.rol === 'cliente'" class="form-text mt-2">
-      <i class="bi bi-envelope me-1"></i>Se enviará un correo de bienvenida al cliente con sus credenciales.
+      <i class="bi bi-envelope me-1"></i>Se enviará un correo de bienvenida con las credenciales de acceso.
     </div>
 
     <div v-if="errorServidor" class="alert alert-danger py-2 mt-3 mb-0" style="font-size: 0.875rem;">
@@ -75,13 +75,20 @@ import AppModal   from '@/components/ui/AppModal.vue'
 import AuthInput  from '@/components/ui/AuthInput.vue'
 import PhoneInput from '@/components/ui/PhoneInput.vue'
 
+const props = defineProps({
+  rolFijo: { type: String, default: '' }, // si se pasa, el rol queda fijo e invisible
+})
+
 const emit = defineEmits(['close', 'creado'])
 
 const cargando      = ref(false)
 const errorServidor = ref(null)
 const errores       = ref({})
 
-const form = reactive({ nombre: '', apellido: '', email: '', password: '', telefono: '', rol: '' })
+const form = reactive({
+  nombre: '', apellido: '', email: '', password: '', telefono: '',
+  rol: props.rolFijo || '',
+})
 
 const validar = () => {
   const e = {}
@@ -100,7 +107,7 @@ const submit = async () => {
   if (!validar()) return
   cargando.value = true
   try {
-    await api.post('/api/usuarios', {
+    const { data } = await api.post('/api/usuarios', {
       nombre:   form.nombre.trim(),
       apellido: form.apellido.trim(),
       email:    form.email.trim(),
@@ -108,7 +115,12 @@ const submit = async () => {
       telefono: form.telefono.trim() || undefined,
       rol:      form.rol,
     })
-    emit('creado')
+    emit('creado', {
+      id:       data.id,
+      nombre:   form.nombre.trim(),
+      apellido: form.apellido.trim(),
+      email:    form.email.trim(),
+    })
   } catch (err) {
     errorServidor.value = err.response?.data?.mensaje || 'Error al crear el usuario.'
   } finally {

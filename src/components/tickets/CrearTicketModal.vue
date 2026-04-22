@@ -39,11 +39,20 @@
         placeholder="Seleccione o busque un cliente..."
         add-label="Agregar nuevo cliente"
         :invalid="!!errores.id_cliente"
+        @agregar="mostrarCrearCliente = true"
       />
       <div v-if="errores.id_cliente" class="text-danger mt-1" style="font-size: 0.875em;">
         {{ errores.id_cliente }}
       </div>
     </div>
+
+    <!-- Modal: crear cliente rápido -->
+    <CrearUsuarioModal
+      v-if="mostrarCrearCliente"
+      rol-fijo="cliente"
+      @close="mostrarCrearCliente = false"
+      @creado="onClienteCreado"
+    />
 
     <div class="row g-2 mb-3">
       <div v-if="!esCliente" class="col-6">
@@ -91,6 +100,7 @@ import api from '@/api/axios'
 import AppModal          from '@/components/ui/AppModal.vue'
 import ColorBadgeSelect  from '@/components/ui/ColorBadgeSelect.vue'
 import SearchableSelect  from '@/components/ui/SearchableSelect.vue'
+import CrearUsuarioModal from '@/components/usuarios/CrearUsuarioModal.vue'
 
 const PRIOR_OPTIONS = [
   { value: 'bajo',    label: 'Bajo',    color: { bg: '#6c757d', text: '#fff' } },
@@ -104,9 +114,10 @@ const emit = defineEmits(['close', 'creado'])
 const store     = useStore()
 const esCliente = computed(() => store.getters['auth/rol'] === 'cliente')
 
-const categorias    = ref([])
-const agentes       = ref([])
-const clientes      = ref([])
+const categorias         = ref([])
+const agentes            = ref([])
+const clientes           = ref([])
+const mostrarCrearCliente = ref(false)
 
 const clienteOptions = computed(() =>
   clientes.value.map(c => ({
@@ -123,6 +134,12 @@ const agenteOptions = computed(() =>
     sublabel: a.email,
   }))
 )
+const onClienteCreado = (usuario) => {
+  clientes.value.push(usuario)
+  form.id_cliente       = usuario.id
+  mostrarCrearCliente.value = false
+}
+
 const errores       = ref({})
 const errorServidor = ref(null)
 const cargando      = ref(false)
