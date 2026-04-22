@@ -113,6 +113,8 @@ const emit = defineEmits(['close', 'creado'])
 
 const store     = useStore()
 const esCliente = computed(() => store.getters['auth/rol'] === 'cliente')
+const esAgente  = computed(() => store.getters['auth/rol'] === 'agente')
+const usuario   = computed(() => store.getters['auth/usuario'])
 
 const categorias         = ref([])
 const agentes            = ref([])
@@ -166,6 +168,8 @@ onMounted(async () => {
   if (resCat.status === 'fulfilled') categorias.value = resCat.value.data.datos ?? []
   if (resAg?.status  === 'fulfilled') agentes.value   = resAg.value.data  ?? []
   if (resCli?.status === 'fulfilled') clientes.value  = resCli.value.data ?? []
+
+  if (esAgente.value) form.id_agente = usuario.value?.id ?? ''
 })
 
 const validar = () => {
