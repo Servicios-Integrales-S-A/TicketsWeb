@@ -109,6 +109,13 @@ const PRIOR_OPTIONS = [
   { value: 'critico', label: 'Crítico', color: { bg: '#dc3545', text: '#fff' } },
 ]
 
+const props = defineProps({
+  prefill: {
+    type:    Object,
+    default: () => ({}),
+  },
+})
+
 const emit = defineEmits(['close', 'creado'])
 
 const store     = useStore()
@@ -170,6 +177,10 @@ onMounted(async () => {
   if (resCli?.status === 'fulfilled') clientes.value  = resCli.value.data ?? []
 
   if (esAgente.value) form.id_agente = usuario.value?.id ?? ''
+
+  // Pre-llenar campos que vienen del chatbot
+  if (props.prefill.id_categoria) form.id_categoria = props.prefill.id_categoria
+  if (props.prefill.prioridad)    form.prioridad    = props.prefill.prioridad
 })
 
 const validar = () => {
@@ -191,7 +202,7 @@ const submit = async () => {
       titulo:       form.titulo.trim(),
       descripcion:  form.descripcion.trim(),
       prioridad:    form.prioridad,
-      canal:        'web',
+      canal:        props.prefill.canal ?? 'web',
       id_categoria: form.id_categoria,
     }
     if (!esCliente.value) {
