@@ -1,6 +1,15 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import store from '@/store'
 
+function tokenExpirado(token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return payload.exp * 1000 < Date.now()
+  } catch {
+    return true
+  }
+}
+
 const routes = [
   // ─── Rutas públicas ───────────────────────────────────────────────────────
   {
@@ -62,6 +71,11 @@ const router = createRouter({
 
 // ─── Guard global ─────────────────────────────────────────────────────────────
 router.beforeEach((to, from, next) => {
+  const token = localStorage.getItem('token')
+  if (token && tokenExpirado(token)) {
+    store.commit('auth/CLEAR_SESSION')
+  }
+
   const isAuthenticated = store.getters['auth/isAuthenticated']
   const rolUsuario      = store.getters['auth/rol']
   const requiresAuth    = to.matched.some(r => r.meta.requiresAuth)

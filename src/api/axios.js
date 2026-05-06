@@ -1,4 +1,5 @@
 import axios from 'axios'
+import store from '@/store'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
@@ -19,8 +20,7 @@ api.interceptors.response.use(
   err => {
     const tieneToken = !!localStorage.getItem('token')
     if (err.response?.status === 401 && tieneToken) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('usuario')
+      store.commit('auth/CLEAR_SESSION')
       window.location.href = '/login'
     }
     return Promise.reject(err)
