@@ -1,5 +1,5 @@
 <template>
-  <div class="ss-wrapper" ref="wrapperRef" :class="{ 'ss-invalid': invalid }">
+  <div class="ss-wrapper" ref="wrapperRef" :class="{ 'ss-invalid': invalid }" @click.stop>
 
     <!-- Input trigger -->
     <div class="ss-input-box" @click="abrir">
@@ -10,7 +10,7 @@
         class="ss-input"
         :placeholder="placeholder"
         v-model="query"
-        @focus="isOpen = true"
+        @focus="abrirSinFoco"
         @input="isOpen = true"
         autocomplete="off"
       />
@@ -23,39 +23,46 @@
       <i class="bi bi-chevron-down ss-chevron" :class="{ 'ss-chevron--open': isOpen }"></i>
     </div>
 
-    <!-- Dropdown -->
-    <div v-if="isOpen" class="ss-dropdown">
-
-      <!-- Botón superior configurable -->
-      <button
-        v-if="addLabel"
-        type="button"
-        class="ss-add-btn"
-        @click="onAddClick"
+    <!-- Dropdown (teleportado al body para salir del overflow del modal) -->
+    <Teleport to="body">
+      <div
+        v-if="isOpen"
+        ref="dropdownRef"
+        class="ss-dropdown"
+        :style="dropdownStyle"
+        @click.stop
       >
-        <i :class="['bi', addAction === 'reset' ? 'bi-arrow-counterclockwise' : 'bi-plus-lg', 'me-1']"></i>{{ addLabel }}
-      </button>
-      <div v-if="addLabel" class="ss-divider"></div>
-
-      <!-- Lista scrollable -->
-      <div class="ss-list">
-        <div v-if="filtradas.length === 0" class="ss-empty">
-          Sin resultados para "{{ query }}"
-        </div>
+        <!-- Botón superior configurable -->
         <button
-          v-for="opt in filtradas"
-          :key="opt.value"
+          v-if="addLabel"
           type="button"
-          class="ss-option"
-          :class="{ 'ss-option--active': opt.value === modelValue }"
-          @click="seleccionar(opt)"
+          class="ss-add-btn"
+          @click="onAddClick"
         >
-          <div class="ss-option-label">{{ opt.label }}</div>
-          <div v-if="opt.sublabel" class="ss-option-sublabel">{{ opt.sublabel }}</div>
+          <i :class="['bi', addAction === 'reset' ? 'bi-arrow-counterclockwise' : 'bi-plus-lg', 'me-1']"></i>{{ addLabel }}
         </button>
-      </div>
+        <div v-if="addLabel" class="ss-divider"></div>
 
-    </div>
+        <!-- Lista scrollable -->
+        <div class="ss-list">
+          <div v-if="filtradas.length === 0" class="ss-empty">
+            Sin resultados para "{{ query }}"
+          </div>
+          <button
+            v-for="opt in filtradas"
+            :key="opt.value"
+            type="button"
+            class="ss-option"
+            :class="{ 'ss-option--active': opt.value === modelValue }"
+            @click="seleccionar(opt)"
+          >
+            <div class="ss-option-label">{{ opt.label }}</div>
+            <div v-if="opt.sublabel" class="ss-option-sublabel">{{ opt.sublabel }}</div>
+          </button>
+        </div>
+      </div>
+    </Teleport>
+
   </div>
 </template>
 
@@ -73,12 +80,50 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'agregar'])
 
-const isOpen     = ref(false)
-const query      = ref('')
-const wrapperRef = ref(null)
-const inputRef   = ref(null)
+const uid         = Symbol()
+const isOpen      = ref(false)
+const query       = ref('')
+const wrapperRef  = ref(null)
+const dropdownRef = ref(null)
+const inputRef    = ref(null)
 
-// Sync display text when modelValue changes from outside
+const dropdownStyle = ref({})
+
+// ── Posicionamiento (fixed, para salir del overflow del modal) ────────────
+
+const posicionarDropdown = () => {
+  const wrapper = wrapperRef.value
+  if (!wrapper) return
+  const rect = wrapper.getBoundingClientRect()
+  const spaceBelow = window.innerHeight - rect.bottom
+  const estimatedHeight = 300
+
+  const abrirArriba = spaceBelow < estimatedHeight && rect.top > estimatedHeight
+
+  dropdownStyle.value = {
+    position: 'fixed',
+    left:     rect.left  + 'px',
+    width:    rect.width + 'px',
+    zIndex:   9999,
+    ...(abrirArriba
+      ? { bottom: (window.innerHeight - rect.top + 4) + 'px', top: 'auto' }
+      : { top: (rect.bottom + 4) + 'px', bottom: 'auto' })
+  }
+}
+
+watch(isOpen, (val) => {
+  if (val) {
+    nextTick(posicionarDropdown)
+    document.dispatchEvent(new CustomEvent('ss-open', { detail: uid }))
+  }
+})
+
+const cerrarSiOtraInstancia = (e) => {
+  if (e.detail !== uid) isOpen.value = false
+}
+
+// ── Sync del texto del input ──────────────────────────────────────────────
+
 watch(() => props.modelValue, (val) => {
   if (!isOpen.value) {
     const opt = props.options.find(o => o.value === val)
@@ -86,13 +131,14 @@ watch(() => props.modelValue, (val) => {
   }
 }, { immediate: true })
 
-// Also sync when options load after modelValue is already set
 watch(() => props.options, () => {
   if (props.modelValue) {
     const opt = props.options.find(o => o.value === props.modelValue)
     if (opt) query.value = opt.label
   }
 })
+
+// ── Filtrado ──────────────────────────────────────────────────────────────
 
 const filtradas = computed(() => {
   const q = query.value.trim().toLowerCase()
@@ -102,6 +148,8 @@ const filtradas = computed(() => {
     (o.sublabel ?? '').toLowerCase().includes(q)
   )
 })
+
+// ── Acciones ──────────────────────────────────────────────────────────────
 
 const onAddClick = () => {
   if (props.addAction === 'reset') {
@@ -114,9 +162,11 @@ const onAddClick = () => {
 
 const abrir = () => {
   isOpen.value = true
-  nextTick(() => {
-    inputRef.value?.select()
-  })
+  nextTick(() => inputRef.value?.select())
+}
+
+const abrirSinFoco = () => {
+  isOpen.value = true
 }
 
 const seleccionar = (opt) => {
@@ -131,17 +181,26 @@ const limpiar = () => {
   isOpen.value = false
 }
 
-const cerrarDropdown = (e) => {
-  if (wrapperRef.value && !wrapperRef.value.contains(e.target)) {
+// ── Cierre al hacer click fuera ───────────────────────────────────────────
+// El wrapper y el dropdown tienen @click.stop, por lo que los clics dentro
+// no llegan al document y este listener solo cierra al hacer click fuera.
+
+const cerrarAlClickFuera = () => {
+  if (isOpen.value) {
     isOpen.value = false
-    // Restore selected label if user typed but didn't pick
     const opt = props.options.find(o => o.value === props.modelValue)
     query.value = opt?.label ?? ''
   }
 }
 
-onMounted(()   => document.addEventListener('mousedown', cerrarDropdown))
-onUnmounted(() => document.removeEventListener('mousedown', cerrarDropdown))
+onMounted(() => {
+  document.addEventListener('click', cerrarAlClickFuera)
+  document.addEventListener('ss-open', cerrarSiOtraInstancia)
+})
+onUnmounted(() => {
+  document.removeEventListener('click', cerrarAlClickFuera)
+  document.removeEventListener('ss-open', cerrarSiOtraInstancia)
+})
 </script>
 
 <style scoped>
@@ -203,13 +262,8 @@ onUnmounted(() => document.removeEventListener('mousedown', cerrarDropdown))
 }
 .ss-chevron--open { transform: rotate(180deg); }
 
-/* ── Dropdown ── */
+/* ── Dropdown (renderizado en body vía Teleport) ── */
 .ss-dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  z-index: 1050;
   background: #fff;
   border: 1px solid #dee2e6;
   border-radius: 10px;
@@ -268,8 +322,8 @@ onUnmounted(() => document.removeEventListener('mousedown', cerrarDropdown))
   text-align: left;
   transition: background 0.1s;
 }
-.ss-option:hover       { background: #f8f9fa; }
-.ss-option--active     { background: #e8f0fe; }
+.ss-option:hover         { background: #f8f9fa; }
+.ss-option--active       { background: #e8f0fe; }
 .ss-option--active:hover { background: #dce7fd; }
 
 .ss-option-label {

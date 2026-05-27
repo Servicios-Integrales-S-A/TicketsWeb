@@ -163,8 +163,9 @@
     />
 
     <!-- Modal: crear ticket -->
-    <CrearTicketModal
+    <TicketDetailModal
       v-if="mostrarCrear"
+      :modoCrear="true"
       @close="mostrarCrear = false"
       @creado="onCreado"
     />
@@ -183,7 +184,7 @@ import api from '@/api/axios'
 import AppTable          from '@/components/ui/AppTable.vue'
 import ViewToolbar       from '@/components/ui/ViewToolbar.vue'
 import ColorBadgeSelect  from '@/components/ui/ColorBadgeSelect.vue'
-import CrearTicketModal  from '@/components/tickets/CrearTicketModal.vue'
+import TicketDetailModal from '@/views/tickets/TicketDetailModal.vue'
 import TicketsBoardView  from '@/components/tickets/TicketsBoardView.vue'
 
 const router = useRouter()
