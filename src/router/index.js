@@ -10,13 +10,23 @@ function tokenExpirado(token) {
   }
 }
 
+const AUTH_ROUTES = ['login', 'register', 'forgot-password', 'reset-password']
+
 const routes = [
-  // ─── Rutas públicas ───────────────────────────────────────────────────────
+  // ─── Home público (AppLayout sin requiresAuth) ────────────────────────────
+  {
+    path: '/',
+    component: () => import('@/layouts/AppLayout.vue'),
+    children: [
+      { path: '', name: 'home', component: () => import('@/views/HomeView.vue') },
+    ],
+  },
+
+  // ─── Rutas de autenticación (AuthLayout) ─────────────────────────────────
   {
     path: '/',
     component: () => import('@/layouts/AuthLayout.vue'),
     children: [
-      { path: '',                redirect: '/login' },
       { path: 'login',           name: 'login',           component: () => import('@/views/auth/LoginView.vue') },
       { path: 'register',        name: 'register',        component: () => import('@/views/auth/RegisterView.vue') },
       { path: 'forgot-password', name: 'forgot-password', component: () => import('@/views/auth/ForgotPasswordView.vue') },
@@ -24,7 +34,7 @@ const routes = [
     ],
   },
 
-  // ─── Rutas protegidas ─────────────────────────────────────────────────────
+  // ─── Rutas protegidas (AppLayout con requiresAuth) ────────────────────────
   {
     path: '/',
     component: () => import('@/layouts/AppLayout.vue'),
@@ -52,11 +62,6 @@ const routes = [
       { path: 'admin/usuarios',   name: 'admin-usuarios',   meta: { roles: ['admin'] }, component: () => import('@/views/admin/UsuariosView.vue') },
       { path: 'admin/categorias', name: 'admin-categorias', meta: { roles: ['admin'] }, component: () => import('@/views/admin/CategoriasView.vue') },
       { path: 'admin/reglas',     name: 'admin-reglas',     meta: { roles: ['admin'] }, component: () => import('@/views/admin/ReglasView.vue') },
-
-      { path: 'home', name: 'home', component: () => import('@/views/HomeView.vue') },
-
-      // Redirigir / a home
-      { path: '', redirect: '/home' },
     ],
   },
 
@@ -81,13 +86,14 @@ router.beforeEach((to, from, next) => {
   const requiresAuth    = to.matched.some(r => r.meta.requiresAuth)
   const rolesPermitidos = to.meta.roles
 
-  // Sin sesión intentando acceder a ruta protegida → login
+  // Sin sesión intentando acceder a ruta protegida → home público + abrir modal login
   if (requiresAuth && !isAuthenticated) {
-    return next({ name: 'login' })
+    store.commit('auth/SHOW_LOGIN_MODAL')
+    return next({ name: 'home' })
   }
 
-  // Con sesión intentando acceder a rutas públicas → home
-  if (!requiresAuth && isAuthenticated && to.name !== 'not-found') {
+  // Con sesión intentando acceder a rutas de auth (login, register, etc.) → home
+  if (isAuthenticated && AUTH_ROUTES.includes(to.name)) {
     return next({ name: 'home' })
   }
 

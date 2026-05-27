@@ -3,7 +3,8 @@
 
     <h6 class="mb-0 fw-semibold text-dark">{{ paginaActual }}</h6>
 
-    <div class="d-flex align-items-center gap-3">
+    <!-- Autenticado -->
+    <div v-if="isAuthenticated" class="d-flex align-items-center gap-3">
 
       <div class="text-end lh-sm d-none d-md-block">
         <div class="fw-semibold" style="font-size: 0.85rem;">{{ nombreCompleto }}</div>
@@ -36,6 +37,12 @@
       </div>
 
     </div>
+
+    <!-- No autenticado -->
+    <button v-else class="btn btn-primary btn-sm" @click="abrirLogin">
+      Iniciar sesión
+    </button>
+
   </header>
 </template>
 
@@ -48,8 +55,9 @@ const store  = useStore()
 const router = useRouter()
 const route  = useRoute()
 
-const rol           = computed(() => store.getters['auth/rol'])
-const nombreCompleto = computed(() => store.getters['auth/nombreCompleto'])
+const isAuthenticated = computed(() => store.getters['auth/isAuthenticated'])
+const rol             = computed(() => store.getters['auth/rol'])
+const nombreCompleto  = computed(() => store.getters['auth/nombreCompleto'])
 
 const TITULOS = {
   'home':             'Inicio',
@@ -63,8 +71,10 @@ const TITULOS = {
 
 const paginaActual = computed(() => TITULOS[route.name] || 'Sistema de Tickets')
 
+const abrirLogin = () => store.commit('auth/SHOW_LOGIN_MODAL')
+
 const cerrarSesion = async () => {
   await store.dispatch('auth/logout')
-  router.push({ name: 'login' })
+  router.push({ name: 'home' })
 }
 </script>

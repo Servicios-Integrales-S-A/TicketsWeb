@@ -1,6 +1,6 @@
 <template>
   <div class="modal d-block modal-backdrop-custom" @click.self="$emit('close')">
-    <div class="modal-dialog modal-dialog-centered" :class="[sizeClass, { 'modal-dialog-scrollable': scrollable }]">
+    <div class="modal-dialog modal-dialog-centered" :class="[sizeClass, dialogClass, { 'modal-dialog-scrollable': scrollable }]">
       <div class="modal-content border-0 shadow">
 
         <div class="modal-header border-0 pb-0">
@@ -51,6 +51,7 @@ const props = defineProps({
   submitVariant: { type: String,  default: 'btn-primary' },
   cargando:      { type: Boolean, default: false },
   size:          { type: String,  default: '' },
+  dialogClass:   { type: String,  default: '' },
   scrollable:    { type: Boolean, default: false },
   bodyClass:     { type: String,  default: '' },
 })

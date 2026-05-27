@@ -1,7 +1,7 @@
 <template>
 
-  <!-- ── Vista cliente ── -->
-  <div v-if="esCliente" class="cliente-home">
+  <!-- ── Vista pública / cliente ── -->
+  <div v-if="esVistaCliente" class="cliente-home">
 
     <!-- Hero -->
     <header class="cliente-hero">
@@ -19,20 +19,71 @@
     <!-- Acceso rápido -->
     <section class="cliente-acceso">
       <p class="cliente-section-titulo">¿Qué deseas hacer?</p>
-      <div class="cliente-actions">
+
+      <!-- Cards de acceso rápido (cliente autenticado) -->
+      <div v-if="isAuthenticated" class="cliente-actions">
         <router-link
-          v-for="card in CARDS_CLIENTE"
-          :key="card.id"
-          :to="card.to"
+          :to="{ name: 'tickets' }"
           class="cliente-card"
-          :style="{ '--bg': card.color, '--border': card.colorDark, '--hover': card.colorBright }"
+          style="--bg: #0d6efd; --border: #0a58ca; --hover: #3d8bfd"
         >
-          <i :class="`bi ${card.icono} cliente-card-icon`"></i>
-          <span class="cliente-card-titulo">{{ card.titulo }}</span>
-          <small class="cliente-card-desc">{{ card.descripcion }}</small>
+          <i class="bi bi-ticket-perforated cliente-card-icon"></i>
+          <span class="cliente-card-titulo">Mis Tickets</span>
+          <small class="cliente-card-desc">Consulta el estado de tus solicitudes</small>
         </router-link>
+        <div
+          class="cliente-card"
+          style="--bg: #198754; --border: #146c43; --hover: #28a745"
+          role="button"
+          @click="mostrarFormulario = true"
+        >
+          <i class="bi bi-plus-circle cliente-card-icon"></i>
+          <span class="cliente-card-titulo">Nueva Solicitud</span>
+          <small class="cliente-card-desc">Abre un nuevo ticket de soporte</small>
+        </div>
       </div>
+
+      <!-- Botón "Nueva Solicitud" para visitantes sin sesión -->
+      <div v-if="!isAuthenticated" class="cliente-actions">
+        <div
+          class="cliente-card"
+          style="--bg: #198754; --border: #146c43; --hover: #28a745; grid-column: 1 / -1"
+          role="button"
+          @click="mostrarFormulario = true"
+        >
+          <i class="bi bi-plus-circle cliente-card-icon"></i>
+          <span class="cliente-card-titulo">Nueva Solicitud</span>
+          <small class="cliente-card-desc">Abre un nuevo ticket de soporte</small>
+        </div>
+      </div>
+
+      <!-- Widget de consulta — siempre visible -->
+      <ConsultaTicketWidget />
     </section>
+
+    <!-- Modal: nueva solicitud (clientes y público) -->
+    <AppModal
+      v-if="mostrarFormulario"
+      titulo="Nueva Solicitud de Soporte"
+      :submit-label="exitoPublico ? '' : 'Crear ticket'"
+      cargando-label="Creando..."
+      submit-variant="btn-success"
+      cancel-label="Cerrar"
+      :cargando="formCargando"
+      dialog-class="modal-formulario-publico"
+      scrollable
+      @close="cerrarFormulario"
+      @submit="formRef?.submit()"
+    >
+      <FormularioTicketPublico
+        ref="formRef"
+        :publico="!isAuthenticated"
+        @cargando="v => formCargando = v"
+        @exito="exitoPublico = true"
+        @reiniciado="exitoPublico = false"
+        @creado="cerrarFormulario"
+      />
+    </AppModal>
 
     <!-- About Us -->
     <section class="cliente-about">
@@ -74,7 +125,7 @@
 
   </div>
 
-  <!-- ── Vista admin / agente (sin cambios) ── -->
+  <!-- ── Vista admin / agente ── -->
   <div v-else class="dashboard" :class="esAdmin ? 'dashboard--admin' : 'dashboard--usuario'">
     <router-link
       v-for="card in tarjetas"
@@ -92,12 +143,29 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useStore } from 'vuex'
+import ConsultaTicketWidget from '@/components/tickets/ConsultaTicketWidget.vue'
+import FormularioTicketPublico from '@/components/tickets/FormularioTicketPublico.vue'
+import AppModal from '@/components/ui/AppModal.vue'
 
-const store     = useStore()
-const esAdmin   = computed(() => store.getters['auth/rol'] === 'admin')
-const esCliente = computed(() => store.getters['auth/rol'] === 'cliente')
+const store             = useStore()
+const mostrarFormulario = ref(false)
+const formCargando      = ref(false)
+const formRef           = ref(null)
+const exitoPublico      = ref(false)
+
+function cerrarFormulario() {
+  mostrarFormulario.value = false
+  formCargando.value      = false
+  exitoPublico.value      = false
+}
+const isAuthenticated = computed(() => store.getters['auth/isAuthenticated'])
+const rol             = computed(() => store.getters['auth/rol'])
+
+const esAdmin       = computed(() => rol.value === 'admin')
+// Público (sin sesión) o cliente autenticado comparten el mismo layout
+const esVistaCliente = computed(() => !isAuthenticated.value || rol.value === 'cliente')
 
 /* ── Cards cliente (acciones rápidas) ── */
 const CARDS_CLIENTE = [
@@ -210,7 +278,7 @@ const tarjetas = computed(() => esAdmin.value ? CARDS_ADMIN : CARDS_BASE)
 
 <style scoped>
 /* ════════════════════════════════════════
-   Vista cliente
+   Vista cliente / pública
 ════════════════════════════════════════ */
 .cliente-home {
   height: 100%;
@@ -415,7 +483,7 @@ const tarjetas = computed(() => esAdmin.value ? CARDS_ADMIN : CARDS_BASE)
 }
 
 /* ════════════════════════════════════════
-   Vista admin / agente (sin cambios)
+   Vista admin / agente
 ════════════════════════════════════════ */
 .dashboard {
   display: grid;
