@@ -26,38 +26,40 @@
         <span>Inicio</span>
       </router-link>
 
-      <router-link :to="{ name: 'tickets' }" class="sidebar-link d-flex align-items-center gap-2 px-3 py-2 text-decoration-none">
-        <i class="bi bi-ticket-perforated fs-5"></i>
-        <span>Tickets</span>
-      </router-link>
-
-      <template v-if="rol === 'admin'">
-        <div class="px-3 mt-3 mb-1">
-          <small class="text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.08em;">
-            Administración
-          </small>
-        </div>
-
-        <router-link :to="{ name: 'admin-usuarios' }" class="sidebar-link d-flex align-items-center gap-2 px-3 py-2 text-decoration-none">
-          <i class="bi bi-people fs-5"></i>
-          <span>Usuarios</span>
+      <template v-if="isAuthenticated">
+        <router-link :to="{ name: 'tickets' }" class="sidebar-link d-flex align-items-center gap-2 px-3 py-2 text-decoration-none">
+          <i class="bi bi-ticket-perforated fs-5"></i>
+          <span>Tickets</span>
         </router-link>
 
-        <router-link :to="{ name: 'admin-categorias' }" class="sidebar-link d-flex align-items-center gap-2 px-3 py-2 text-decoration-none">
-          <i class="bi bi-tags fs-5"></i>
-          <span>Categorías</span>
-        </router-link>
+        <template v-if="rol === 'admin'">
+          <div class="px-3 mt-3 mb-1">
+            <small class="text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.08em;">
+              Administración
+            </small>
+          </div>
 
-        <router-link :to="{ name: 'admin-reglas' }" class="sidebar-link d-flex align-items-center gap-2 px-3 py-2 text-decoration-none">
-          <i class="bi bi-diagram-3 fs-5"></i>
-          <span>Reglas</span>
-        </router-link>
+          <router-link :to="{ name: 'admin-usuarios' }" class="sidebar-link d-flex align-items-center gap-2 px-3 py-2 text-decoration-none">
+            <i class="bi bi-people fs-5"></i>
+            <span>Usuarios</span>
+          </router-link>
+
+          <router-link :to="{ name: 'admin-categorias' }" class="sidebar-link d-flex align-items-center gap-2 px-3 py-2 text-decoration-none">
+            <i class="bi bi-tags fs-5"></i>
+            <span>Categorías</span>
+          </router-link>
+
+          <router-link :to="{ name: 'admin-reglas' }" class="sidebar-link d-flex align-items-center gap-2 px-3 py-2 text-decoration-none">
+            <i class="bi bi-diagram-3 fs-5"></i>
+            <span>Reglas</span>
+          </router-link>
+        </template>
       </template>
 
     </nav>
 
-    <!-- Perfil al fondo -->
-    <div class="border-top border-secondary">
+    <!-- Perfil al fondo — solo autenticado -->
+    <div v-if="isAuthenticated" class="border-top border-secondary">
       <router-link :to="{ name: 'perfil' }" class="sidebar-link d-flex align-items-center gap-2 px-3 py-3 text-decoration-none">
         <i class="bi bi-person-circle fs-5"></i>
         <div class="lh-sm overflow-hidden">
@@ -74,9 +76,10 @@
 import { computed } from 'vue'
 import { useStore } from 'vuex'
 
-const store        = useStore()
-const rol          = computed(() => store.getters['auth/rol'])
-const nombreCompleto = computed(() => store.getters['auth/nombreCompleto'])
+const store           = useStore()
+const isAuthenticated = computed(() => store.getters['auth/isAuthenticated'])
+const rol             = computed(() => store.getters['auth/rol'])
+const nombreCompleto  = computed(() => store.getters['auth/nombreCompleto'])
 </script>
 
 <style scoped>

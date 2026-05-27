@@ -1,8 +1,9 @@
 import api from '@/api/axios'
 
 const state = () => ({
-  token:   localStorage.getItem('token')   || null,
-  usuario: JSON.parse(localStorage.getItem('usuario')) || null,
+  token:          localStorage.getItem('token')   || null,
+  usuario:        JSON.parse(localStorage.getItem('usuario')) || null,
+  showLoginModal: false,
 })
 
 const getters = {
@@ -12,6 +13,7 @@ const getters = {
   nombreCompleto:  state => state.usuario
     ? `${state.usuario.nombre} ${state.usuario.apellido}`
     : '',
+  showLoginModal:  state => state.showLoginModal,
 }
 
 const mutations = {
@@ -31,6 +33,8 @@ const mutations = {
     localStorage.removeItem('token')
     localStorage.removeItem('usuario')
   },
+  SHOW_LOGIN_MODAL(state) { state.showLoginModal = true  },
+  HIDE_LOGIN_MODAL(state) { state.showLoginModal = false },
 }
 
 const actions = {

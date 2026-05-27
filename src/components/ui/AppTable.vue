@@ -1,11 +1,11 @@
 <template>
   <div class="card border-0 shadow-sm">
     <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0">
+      <table :class="['table', 'table-hover', 'align-middle', 'mb-0', { 'app-table--striped': striped }]">
 
         <thead class="table-light">
           <tr>
-            <th class="text-muted" style="width: 42px;">#</th>
+            <th v-if="counter" class="text-muted" style="width: 42px;">#</th>
             <th
               v-for="col in columns"
               :key="col.key"
@@ -17,13 +17,13 @@
 
         <tbody>
           <tr v-if="loading">
-            <td :colspan="columns.length + 1" class="text-center py-5 text-muted">
+            <td :colspan="columns.length + (counter ? 1 : 0)" class="text-center py-5 text-muted">
               <span class="spinner-border spinner-border-sm me-2"></span>Cargando...
             </td>
           </tr>
 
           <tr v-else-if="!rows.length">
-            <td :colspan="columns.length + 1" class="text-center py-5 text-muted">
+            <td :colspan="columns.length + (counter ? 1 : 0)" class="text-center py-5 text-muted">
               <i class="bi bi-inbox fs-2 d-block mb-2"></i>
               {{ emptyText }}
             </td>
@@ -36,7 +36,7 @@
             :class="{ 'app-table-row--clickable': clickable }"
             @click="clickable ? $emit('row-click', row) : null"
           >
-            <td class="text-muted" style="font-size: 0.85rem;">{{ index + 1 }}</td>
+            <td v-if="counter" class="text-muted" style="font-size: 0.85rem;">{{ index + 1 }}</td>
             <td
               v-for="col in columns"
               :key="col.key"
@@ -64,6 +64,8 @@ defineProps({
   emptyText: { type: String,  default: 'No hay registros para mostrar.' },
   rowKey:    { type: String,  default: 'id' },
   clickable: { type: Boolean, default: false },
+  striped:   { type: Boolean, default: false },
+  counter:   { type: Boolean, default: true  },
 })
 
 defineEmits(['row-click'])
@@ -72,5 +74,9 @@ defineEmits(['row-click'])
 <style scoped>
 .app-table-row--clickable {
   cursor: pointer;
+}
+
+.app-table--striped :deep(tbody tr:nth-child(even)) {
+  background-color: rgba(13, 110, 253, 0.05);
 }
 </style>
