@@ -6,7 +6,7 @@
     <div class="app-main d-flex flex-column flex-grow-1 overflow-hidden">
       <AppNavbar />
 
-      <main class="flex-grow-1 overflow-auto p-4 bg-light">
+      <main class="flex-grow-1 overflow-auto bg-light" style="padding: 1rem;">
         <router-view />
       </main>
     </div>

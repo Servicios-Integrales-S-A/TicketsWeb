@@ -281,7 +281,7 @@ const tarjetas = computed(() => esAdmin.value ? CARDS_ADMIN : CARDS_BASE)
    Vista cliente / pública
 ════════════════════════════════════════ */
 .cliente-home {
-  height: 100%;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   gap: 1.1rem;
@@ -387,14 +387,12 @@ const tarjetas = computed(() => esAdmin.value ? CARDS_ADMIN : CARDS_BASE)
 
 /* ── About Us ── */
 .cliente-about {
-  flex: 1;
   background: #fff;
   border: 1px solid #e9ecef;
   border-radius: 14px;
   padding: 1rem 1.5rem;
   display: flex;
   flex-direction: column;
-  min-height: 0;
 }
 
 .cliente-about-desc {
