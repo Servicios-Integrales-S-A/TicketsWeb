@@ -76,7 +76,7 @@
       @sort="handleSort"
     >
       <template #col-titulo="{ row }">
-        <div class="fw-medium">{{ row.titulo }}</div>
+        <div class="fw-medium text-truncate" :title="row.titulo">{{ row.titulo }}</div>
         <small class="text-muted">{{ row.numero_legible }}</small>
       </template>
 
@@ -273,14 +273,14 @@ watch(() => route.name, (to, from) => {
 const filtros = reactive({ busqueda: '', estado: '', prioridad: '', sinAgente: false })
 
 const columnas = computed(() => [
-  { key: 'titulo',    label: 'Título' },
-  { key: 'estado',    label: 'Estado',    sortable: true },
-  ...(!esCliente.value ? [{ key: 'prioridad', label: 'Prioridad', sortable: true }] : []),
-  { key: 'categoria', label: 'Categoría' },
-  ...(!esCliente.value ? [{ key: 'cliente',   label: 'Cliente',   cellClass: 'text-muted' }] : []),
-  { key: 'agente',    label: 'Agente' },
-  { key: 'creado_en', label: 'Fecha',     sortable: true, cellClass: 'text-muted' },
-  { key: '_acciones', label: '',          width: '48px' },
+  { key: 'titulo',    label: 'Título',                                              width: '466px' },
+  { key: 'estado',    label: 'Estado',    sortable: true,                           width: '148px' },
+  ...(!esCliente.value ? [{ key: 'prioridad', label: 'Prioridad', sortable: true,  width: '139px' }] : []),
+  { key: 'categoria', label: 'Categoría',                                           width: '200px' },
+  ...(!esCliente.value ? [{ key: 'cliente',   label: 'Cliente',   cellClass: 'text-muted', width: '244px' }] : []),
+  { key: 'agente',    label: 'Agente',                                              width: '201px' },
+  { key: 'creado_en', label: 'Fecha',     sortable: true, cellClass: 'text-muted', width: '129px' },
+  { key: '_acciones', label: '',                                                    width: '48px'  },
 ])
 
 const ticketsFiltrados = computed(() => {
