@@ -4,21 +4,21 @@
     <ViewToolbar
       v-model="filtros.busqueda"
       search-placeholder="Buscar categoría o agente..."
-      search-width="250px"
+      search-width="260px"
     >
       <template #filters>
-        <select class="form-select" v-model="filtros.prioridad" @change="reiniciar" style="width: 150px;">
-          <option value="">Todas las prioridades</option>
-          <option value="critico">Crítico</option>
-          <option value="alto">Alto</option>
-          <option value="medio">Medio</option>
-          <option value="bajo">Bajo</option>
-        </select>
-        <select class="form-select" v-model="filtros.activo" @change="reiniciar" style="width: 145px;">
-          <option value="">Todos los estados</option>
-          <option value="true">Activas</option>
-          <option value="false">Inactivas</option>
-        </select>
+        <FilterSelect
+          v-model="filtros.prioridad"
+          :options="PRIOR_FILTER"
+          width="185px"
+          @change="reiniciar"
+        />
+        <FilterSelect
+          v-model="filtros.activo"
+          :options="ACTIVO_FILTER"
+          width="160px"
+          @change="reiniciar"
+        />
       </template>
       <template #actions>
         <button class="btn btn-primary" @click="modalCrear = true">
@@ -114,6 +114,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import api from '@/api/axios'
 import AppTable         from '@/components/ui/AppTable.vue'
 import ViewToolbar      from '@/components/ui/ViewToolbar.vue'
+import FilterSelect     from '@/components/ui/FilterSelect.vue'
 import CrearReglaModal  from '@/components/reglas/CrearReglaModal.vue'
 import ReglaDetailModal from '@/components/reglas/ReglaDetailModal.vue'
 
@@ -182,6 +183,19 @@ const cargarReglas = async () => {
 const cambiarPagina = (p) => { pagina.value = p; cargarReglas() }
 const cambiarTamano = () => { pagina.value = 1; cargarReglas() }
 const abrirEditar   = (id) => { reglaSeleccionada.value = id }
+
+const PRIOR_FILTER = [
+  { value: '',        label: 'Todas las prioridades' },
+  { value: 'critico', label: 'Crítico' },
+  { value: 'alto',    label: 'Alto' },
+  { value: 'medio',   label: 'Medio' },
+  { value: 'bajo',    label: 'Bajo' },
+]
+const ACTIVO_FILTER = [
+  { value: '',      label: 'Todos los estados' },
+  { value: 'true',  label: 'Activas' },
+  { value: 'false', label: 'Inactivas' },
+]
 
 const PRIOR_LABEL = { bajo: 'Bajo', medio: 'Medio', alto: 'Alto', critico: 'Crítico' }
 const PRIOR_BADGE = {

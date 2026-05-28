@@ -8,11 +8,12 @@
       search-width="240px"
     >
       <template #filters>
-        <select class="form-select" v-model="filtros.activo" @change="reiniciar" style="width: 145px;">
-          <option value="">Todos los estados</option>
-          <option value="true">Activas</option>
-          <option value="false">Inactivas</option>
-        </select>
+        <FilterSelect
+          v-model="filtros.activo"
+          :options="ACTIVO_FILTER"
+          width="160px"
+          @change="reiniciar"
+        />
       </template>
       <template #actions>
         <button class="btn btn-primary" @click="abrirModal(null)">
@@ -97,6 +98,7 @@ import { ref, reactive, computed, watch, onMounted } from 'vue'
 import api from '@/api/axios'
 import AppTable       from '@/components/ui/AppTable.vue'
 import ViewToolbar    from '@/components/ui/ViewToolbar.vue'
+import FilterSelect   from '@/components/ui/FilterSelect.vue'
 import CategoriaModal from '@/components/categorias/CategoriaModal.vue'
 
 const categorias            = ref([])
@@ -156,6 +158,12 @@ const abrirModal = (id) => {
   categoriaSeleccionada.value = id
   modalAbierto.value = true
 }
+
+const ACTIVO_FILTER = [
+  { value: '',      label: 'Todos los estados' },
+  { value: 'true',  label: 'Activas' },
+  { value: 'false', label: 'Inactivas' },
+]
 
 const PRIOR_LABEL = { bajo: 'Bajo', medio: 'Medio', alto: 'Alto', critico: 'Crítico' }
 const PRIOR_BADGE = { bajo: 'bg-secondary', medio: 'bg-info text-dark', alto: 'bg-warning text-dark', critico: 'bg-danger' }

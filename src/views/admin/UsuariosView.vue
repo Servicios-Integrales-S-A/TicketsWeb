@@ -5,20 +5,21 @@
     <ViewToolbar
       v-model="filtros.busqueda"
       search-placeholder="Buscar por nombre o email..."
-      search-width="240px"
+      search-width="270px"
     >
       <template #filters>
-        <select class="form-select" v-model="filtros.rol" @change="reiniciar" style="width: 155px;">
-          <option value="">Todos los roles</option>
-          <option value="admin">Administrador</option>
-          <option value="agente">Agente</option>
-          <option value="cliente">Cliente</option>
-        </select>
-        <select class="form-select" v-model="filtros.activo" @change="reiniciar" style="width: 145px;">
-          <option value="">Todos los estados</option>
-          <option value="true">Activos</option>
-          <option value="false">Inactivos</option>
-        </select>
+        <FilterSelect
+          v-model="filtros.rol"
+          :options="ROL_FILTER"
+          width="160px"
+          @change="reiniciar"
+        />
+        <FilterSelect
+          v-model="filtros.activo"
+          :options="ACTIVO_FILTER"
+          width="160px"
+          @change="reiniciar"
+        />
       </template>
       <template #actions>
         <button class="btn btn-primary" @click="mostrarCrear = true">
@@ -114,6 +115,7 @@ import { ref, reactive, computed, watch, onMounted } from 'vue'
 import api from '@/api/axios'
 import AppTable           from '@/components/ui/AppTable.vue'
 import ViewToolbar        from '@/components/ui/ViewToolbar.vue'
+import FilterSelect       from '@/components/ui/FilterSelect.vue'
 import CrearUsuarioModal  from '@/components/usuarios/CrearUsuarioModal.vue'
 import UsuarioDetailModal from '@/components/usuarios/UsuarioDetailModal.vue'
 
@@ -173,6 +175,18 @@ const cambiarPagina = (p) => { pagina.value = p; cargarUsuarios() }
 const cambiarTamano = () => { pagina.value = 1; cargarUsuarios() }
 const abrirDetalle  = (id) => { usuarioSeleccionado.value = id }
 const onCreado      = () => { mostrarCrear.value = false; cargarUsuarios() }
+
+const ROL_FILTER    = [
+  { value: '',        label: 'Todos los roles' },
+  { value: 'admin',   label: 'Administrador' },
+  { value: 'agente',  label: 'Agente' },
+  { value: 'cliente', label: 'Cliente' },
+]
+const ACTIVO_FILTER = [
+  { value: '',      label: 'Todos los estados' },
+  { value: 'true',  label: 'Activos' },
+  { value: 'false', label: 'Inactivos' },
+]
 
 const ROL_LABEL = { admin: 'Administrador', agente: 'Agente', cliente: 'Cliente' }
 const ROL_BADGE = { admin: 'bg-danger', agente: 'bg-primary', cliente: 'bg-secondary' }
