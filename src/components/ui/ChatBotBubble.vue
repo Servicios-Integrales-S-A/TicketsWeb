@@ -1,5 +1,5 @@
 <template>
-  <div class="chatbot-container">
+  <div class="chatbot-container" ref="containerRef">
 
     <!-- Panel de chat -->
     <Transition name="chatbot-panel">
@@ -51,7 +51,7 @@
         </div>
 
         <!-- Opciones predefinidas -->
-        <div v-if="opciones.length && !escribiendo" class="chatbot-options">
+        <div v-if="opciones.length && !escribiendo && !esperandoTexto" class="chatbot-options">
           <button
             v-for="op in opciones"
             :key="op.id"
@@ -59,6 +59,27 @@
             @click="seleccionarOpcion(op)"
           >
             {{ op.label }}
+          </button>
+        </div>
+
+        <!-- Input de texto libre (título, descripción, datos personales) -->
+        <div v-if="esperandoTexto && !escribiendo" class="chatbot-input-area">
+          <input
+            ref="inputRef"
+            v-model="textoInput"
+            class="chatbot-text-input"
+            :placeholder="placeholderInput"
+            :inputmode="pasoActual === 'email' ? 'email' : 'text'"
+            :maxlength="pasoActual === 'descripcion' ? 1000 : 150"
+            autocomplete="off"
+            @keydown.enter.prevent="enviarTexto"
+          />
+          <button
+            class="chatbot-send-btn"
+            :disabled="!textoInput.trim()"
+            @click="enviarTexto"
+          >
+            <i class="bi bi-send-fill"></i>
           </button>
         </div>
 
@@ -77,28 +98,160 @@
     </button>
 
   </div>
+
+  <!-- Modal historial de ticket -->
+  <AppModal
+    v-if="mostrarModalConsulta && resultadoConsulta"
+    :titulo="`${resultadoConsulta.ticket.numero_legible} — ${resultadoConsulta.ticket.titulo}`"
+    cancel-label="Cerrar"
+    size="lg"
+    scrollable
+    @close="mostrarModalConsulta = false"
+  >
+    <template #footer>
+      <button class="btn btn-outline-secondary" @click="mostrarModalConsulta = false">Cerrar</button>
+    </template>
+    <AppTable
+      :columns="COLS_CONSULTA"
+      :rows="filasConsulta"
+      empty-text="Sin actividad registrada."
+      :counter="false"
+      striped
+    >
+      <template #col-estado="{ value }">
+        <span :class="`badge bg-${colorEstado(value)}`">{{ etiquetaEstado(value) }}</span>
+      </template>
+      <template #col-fecha="{ value }">
+        {{ formatFechaCon(value) }}
+      </template>
+      <template #col-fecha_cierre="{ value }">
+        {{ formatFechaCon(value) }}
+      </template>
+    </AppTable>
+  </AppModal>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
 import api from '@/api/axios'
+import { crearTicketPublico, consultarTicketPublico } from '@/api/consulta'
+import AppModal from '@/components/ui/AppModal.vue'
+import AppTable from '@/components/ui/AppTable.vue'
 
-const emit  = defineEmits(['abrirFormulario'])
 const store = useStore()
 
-const esCliente = computed(() => store.getters['auth/rol'] === 'cliente')
-const router    = useRouter()
+const esCliente       = computed(() => store.getters['auth/rol'] === 'cliente')
+const isAuthenticated = computed(() => store.getters['auth/isAuthenticated'])
+const router          = useRouter()
 
 const abierto      = ref(false)
 const notificacion = ref(true)
 const escribiendo  = ref(false)
 const mensajesRef  = ref(null)
+const containerRef = ref(null)
+const inputRef     = ref(null)
 const mensajes     = ref([])
 const opciones     = ref([])
 const categorias   = ref([])
-const selecciones  = ref({})   // acumula: { id_categoria, prioridad }
+const selecciones  = ref({})
+const pasoActual   = ref(null)
+const textoInput   = ref('')
+
+const esperandoTexto       = computed(() => pasoActual.value !== null)
+const resultadoConsulta    = ref(null)
+const mostrarModalConsulta = ref(false)
+
+const COLS_CONSULTA = [
+  { key: 'numero',       label: 'No.',        width: '110px' },
+  { key: 'titulo',       label: 'Título'                     },
+  { key: 'estado',       label: 'Estado',     width: '115px' },
+  { key: 'comentario',   label: 'Comentario'                 },
+  { key: 'fecha',        label: 'Fecha',      width: '100px', cellClass: 'text-nowrap' },
+  { key: 'fecha_cierre', label: 'Cerrado',    width: '100px', cellClass: 'text-nowrap' },
+]
+
+const ESTADOS_CONSULTA = {
+  abierto:     { label: 'Abierto',     color: 'primary'   },
+  en_progreso: { label: 'En progreso', color: 'warning'   },
+  resuelto:    { label: 'Resuelto',    color: 'info'      },
+  cerrado:     { label: 'Cerrado',     color: 'secondary' },
+}
+
+const PATRON_ESTADO = /Estado cambiado de "[^"]+" a "([^"]+)"/
+
+function extraerNuevoEstado(contenido) {
+  const match = contenido?.match(PATRON_ESTADO)
+  return match ? match[1] : null
+}
+
+const filasConsulta = computed(() => {
+  if (!resultadoConsulta.value) return []
+  const { ticket, historial } = resultadoConsulta.value
+  const eventos = [...historial].reverse()
+  let estadoActual = 'abierto'
+  const rows = []
+  for (const evento of eventos) {
+    if (evento.accion === 'creacion') {
+      // estado ya es 'abierto'
+    } else if (evento.accion === 'cambio_estado') {
+      const nuevo = extraerNuevoEstado(evento.contenido)
+      if (!nuevo) continue
+      estadoActual = nuevo
+    } else if (evento.accion === 'comentario') {
+      // no modifica estado
+    } else {
+      continue
+    }
+    rows.push({
+      numero:       ticket.numero_legible,
+      titulo:       ticket.titulo,
+      estado:       estadoActual,
+      comentario:   evento.accion === 'comentario' ? evento.contenido : null,
+      fecha:        evento.fecha,
+      fecha_cierre: estadoActual === 'cerrado' ? ticket.fecha_cierre : null,
+    })
+  }
+  return rows.reverse()
+})
+
+const etiquetaEstado = e => ESTADOS_CONSULTA[e]?.label ?? e
+const colorEstado    = e => ESTADOS_CONSULTA[e]?.color ?? 'secondary'
+const formatFechaCon = f => f ? new Date(f).toLocaleDateString('es-GT', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'
+
+const placeholderInput = computed(() => ({
+  titulo:      'Escribe el título de tu ticket...',
+  descripcion: 'Describe tu solicitud con detalle...',
+  email:       'ejemplo@correo.com',
+  nombre:      'Tu nombre',
+  apellido:    'Tus apellidos',
+}[pasoActual.value] ?? 'Escribe tu respuesta...'))
+
+function onClickOutside(e) {
+  if (containerRef.value && !containerRef.value.contains(e.target)) {
+    cerrarChat()
+  }
+}
+
+watch(abierto, (val) => {
+  if (val) {
+    document.addEventListener('mousedown', onClickOutside)
+  } else {
+    document.removeEventListener('mousedown', onClickOutside)
+  }
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('mousedown', onClickOutside)
+})
+
+watch(pasoActual, async (val) => {
+  if (val) {
+    await nextTick()
+    inputRef.value?.focus()
+  }
+})
 
 onMounted(async () => {
   try {
@@ -124,14 +277,6 @@ const emojiCategoria = (nombre) => {
   return '📂'
 }
 
-/* ── Mapeo prioridad chatbot → valor del modelo ── */
-const PRIO_MAP = {
-  prio_urgente: 'critico',
-  prio_alta:    'alto',
-  prio_normal:  'medio',
-  prio_baja:    'bajo',
-}
-
 /* ── Flujo de conversación ── */
 const FLUJO = {
   inicio: {
@@ -140,29 +285,6 @@ const FLUJO = {
       { id: 'crear_ticket', label: '🎫 Crear un ticket'    },
       { id: 'ver_tickets',  label: '📋 Ver mis tickets'    },
       { id: 'consulta',     label: '💬 Tengo una consulta' },
-    ],
-  },
-  elegir_prioridad: {
-    mensaje: '¿Con qué prioridad calificarías tu solicitud?',
-    opciones: [
-      { id: 'prio_urgente', label: '🔴 Urgente — sistema caído'  },
-      { id: 'prio_alta',    label: '🟠 Alta — afecta mi trabajo' },
-      { id: 'prio_normal',  label: '🟡 Normal — puedo esperar'   },
-      { id: 'prio_baja',    label: '🟢 Baja — cuando puedan'     },
-    ],
-  },
-  fin_ticket: {
-    mensaje: '¡Todo listo! Completa el formulario para enviar tu ticket. 🎉',
-    opciones: [
-      { id: 'abrir_formulario', label: '📨 Completar y enviar ticket' },
-      { id: 'reiniciar',        label: '↩️ Volver al inicio'          },
-    ],
-  },
-  fin_cliente: {
-    mensaje: '¡Listo! Completa el formulario para enviar tu ticket. 🎉',
-    opciones: [
-      { id: 'abrir_formulario', label: '📨 Completar y enviar ticket' },
-      { id: 'reiniciar',        label: '↩️ Volver al inicio'          },
     ],
   },
   ver_tickets: {
@@ -212,7 +334,6 @@ async function mostrarMensajeBot(texto) {
 }
 
 async function irAEtapa(etapaId) {
-  // Paso de categoría: se construye dinámicamente desde la API
   if (etapaId === 'crear_ticket') {
     await mostrarMensajeBot('¡Claro! ¿A qué categoría pertenece tu solicitud?')
     if (categorias.value.length) {
@@ -222,9 +343,15 @@ async function irAEtapa(etapaId) {
         _cat_id: cat.id,
       }))
     } else {
-      await mostrarMensajeBot('No pude cargar las categorías. Selecciónala directamente en el formulario.')
-      opciones.value = FLUJO[esCliente.value ? 'fin_cliente' : 'fin_ticket'].opciones
+      pasoActual.value = 'titulo'
+      await mostrarMensajeBot('Escribe el título de tu ticket.')
     }
+    return
+  }
+
+  if (etapaId === 'ver_tickets' && !isAuthenticated.value) {
+    pasoActual.value = 'numero_ticket'
+    await mostrarMensajeBot('Ingresa el número de tu ticket (solo los dígitos). Ejemplo: 00066')
     return
   }
 
@@ -240,34 +367,31 @@ async function seleccionarOpcion(op) {
   await nextTick()
   scrollDown()
 
-  // Selección de categoría
+  // Selección de categoría → pedir título directamente
   if (op.id.startsWith('cat_')) {
     selecciones.value.id_categoria = op._cat_id
-    await irAEtapa(esCliente.value ? 'fin_cliente' : 'elegir_prioridad')
-    return
-  }
-
-  // Selección de prioridad (solo agente/admin)
-  if (op.id in PRIO_MAP) {
-    selecciones.value.prioridad = PRIO_MAP[op.id]
-    await irAEtapa('fin_ticket')
+    pasoActual.value = 'titulo'
+    await mostrarMensajeBot('¡Perfecto! Ahora escribe el título de tu ticket.')
     return
   }
 
   if (op.id === 'reiniciar') {
     selecciones.value = {}
+    pasoActual.value  = null
+    textoInput.value  = ''
     await irAEtapa('inicio')
     return
   }
 
-  if (op.id === 'abrir_formulario') {
-    await mostrarMensajeBot('¡Perfecto! Abre el formulario para terminar de enviar tu ticket.')
-    opciones.value = [{ id: 'reiniciar', label: '↩️ Volver al inicio' }]
-    emit('abrirFormulario', {
-      id_categoria: selecciones.value.id_categoria ?? null,
-      prioridad:    selecciones.value.prioridad    ?? null,
-      canal:        'chat',
-    })
+  if (op.id === 'ver_historial') {
+    mostrarModalConsulta.value = true
+    return
+  }
+
+  if (op.id === 'otra_consulta') {
+    resultadoConsulta.value = null
+    pasoActual.value = 'numero_ticket'
+    await mostrarMensajeBot('Ingresa el número del ticket a consultar.')
     return
   }
 
@@ -280,6 +404,107 @@ async function seleccionarOpcion(op) {
   }
 
   await irAEtapa(op.id)
+}
+
+const VALIDACIONES = {
+  titulo:         v => v.length >= 3  || 'El título debe tener al menos 3 caracteres.',
+  descripcion:    v => v.length >= 10 || 'La descripción debe tener al menos 10 caracteres.',
+  email:          v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) || 'Ingresa un correo electrónico válido.',
+  nombre:         v => v.length >= 2  || 'Ingresa tu nombre.',
+  apellido:       v => v.length >= 2  || 'Ingresa tus apellidos.',
+  numero_ticket:  v => /^\d{1,5}$/.test(v.trim()) || 'Solo ingresa los dígitos del ticket. Ejemplo: 00066',
+}
+
+async function enviarTexto() {
+  const texto = textoInput.value.trim()
+  if (!texto) return
+
+  const validacion = VALIDACIONES[pasoActual.value]?.(texto)
+  if (validacion !== true) {
+    await mostrarMensajeBot(validacion)
+    return
+  }
+
+  mensajes.value.push({ tipo: 'usuario', texto })
+  const paso = pasoActual.value
+  pasoActual.value = null
+  textoInput.value = ''
+  selecciones.value[paso] = texto
+  await nextTick()
+  scrollDown()
+
+  if (paso === 'titulo') {
+    pasoActual.value = 'descripcion'
+    await mostrarMensajeBot('Describe tu solicitud con el mayor detalle posible.')
+  } else if (paso === 'descripcion') {
+    if (isAuthenticated.value) {
+      await crearTicketChat()
+    } else {
+      pasoActual.value = 'email'
+      await mostrarMensajeBot('¿Cuál es tu correo electrónico? Recibirás actualizaciones ahí.')
+    }
+  } else if (paso === 'email') {
+    pasoActual.value = 'nombre'
+    await mostrarMensajeBot('¿Cuál es tu nombre?')
+  } else if (paso === 'nombre') {
+    pasoActual.value = 'apellido'
+    await mostrarMensajeBot('¿Y tus apellidos?')
+  } else if (paso === 'apellido') {
+    await crearTicketChat()
+  } else if (paso === 'numero_ticket') {
+    const formatted = `TKT-${texto.trim().padStart(5, '0')}`
+    await mostrarMensajeBot('Consultando... 🔍')
+    try {
+      const { data } = await consultarTicketPublico(formatted)
+      resultadoConsulta.value = data
+      const estadoLabel = etiquetaEstado(data.ticket.estado)
+      await mostrarMensajeBot(`Ticket encontrado: "${data.ticket.titulo}" — Estado: ${estadoLabel}.`)
+      opciones.value = [
+        { id: 'ver_historial',  label: '📋 Ver historial completo' },
+        { id: 'otra_consulta',  label: '🔍 Consultar otro ticket'  },
+        { id: 'reiniciar',      label: '↩️ Volver al inicio'       },
+      ]
+    } catch (err) {
+      const msg = err.response?.status === 404
+        ? `No encontré ningún ticket con el número ${formatted}. Verifica e intenta de nuevo.`
+        : 'Hubo un problema al consultar. Por favor intenta de nuevo.'
+      await mostrarMensajeBot(msg)
+      opciones.value = [
+        { id: 'otra_consulta', label: '🔍 Intentar con otro número' },
+        { id: 'reiniciar',     label: '↩️ Volver al inicio'         },
+      ]
+    }
+  }
+}
+
+async function crearTicketChat() {
+  await mostrarMensajeBot('Registrando tu ticket... ⏳')
+  try {
+    let numero_legible
+    if (isAuthenticated.value) {
+      const { data } = await api.post('/api/tickets', {
+        titulo:       selecciones.value.titulo,
+        descripcion:  selecciones.value.descripcion,
+        id_categoria: selecciones.value.id_categoria,
+        canal:        'chat',
+      })
+      numero_legible = data.numero_legible
+    } else {
+      const { data } = await crearTicketPublico({
+        titulo:       selecciones.value.titulo,
+        descripcion:  selecciones.value.descripcion,
+        id_categoria: selecciones.value.id_categoria,
+        email:        selecciones.value.email,
+        nombre:       selecciones.value.nombre,
+        apellido:     selecciones.value.apellido,
+      })
+      numero_legible = data.numero_legible
+    }
+    await mostrarMensajeBot(`¡Solicitud enviada! 🎉 Tu número de ticket es ${numero_legible}. Guárdalo para consultar el estado de tu solicitud en cualquier momento.`)
+  } catch {
+    await mostrarMensajeBot('No se pudo crear el ticket. Por favor intenta de nuevo.')
+  }
+  opciones.value = [{ id: 'reiniciar', label: '↩️ Nueva consulta' }]
 }
 
 async function toggleChat() {
@@ -302,6 +527,8 @@ function resetChat() {
   mensajes.value    = []
   opciones.value    = []
   selecciones.value = {}
+  pasoActual.value  = null
+  textoInput.value  = ''
 }
 
 async function reiniciarChat() {
@@ -596,5 +823,57 @@ function delay(ms) {
 .chatbot-msg-enter-from {
   opacity: 0;
   transform: translateY(8px);
+}
+
+/* ── Input de texto libre ── */
+.chatbot-input-area {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #fff;
+  border-top: 1px solid #e9ecef;
+  flex-shrink: 0;
+}
+
+.chatbot-text-input {
+  flex: 1;
+  border: 1.5px solid #dee2e6;
+  border-radius: 50rem;
+  padding: 7px 14px;
+  font-size: 0.82rem;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.chatbot-text-input:focus {
+  border-color: #86b7fe;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+}
+
+.chatbot-send-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #0d6efd;
+  border: none;
+  color: #fff;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, transform 0.12s;
+}
+
+.chatbot-send-btn:hover:not(:disabled) {
+  background: #0a58ca;
+  transform: scale(1.08);
+}
+
+.chatbot-send-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 </style>
