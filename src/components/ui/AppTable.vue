@@ -1,7 +1,7 @@
 <template>
   <div class="card border-0 shadow-sm">
     <div class="table-responsive">
-      <table :class="['table', 'table-hover', 'align-middle', 'mb-0', { 'app-table--striped': striped }]">
+      <table :class="['table', 'table-hover', 'align-middle', 'mb-0', { 'app-table--striped': striped }]" style="table-layout: fixed; width: 100%;">
 
         <thead class="table-light">
           <tr>

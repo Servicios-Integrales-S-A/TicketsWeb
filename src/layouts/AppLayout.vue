@@ -6,21 +6,12 @@
     <div class="app-main d-flex flex-column flex-grow-1 overflow-hidden">
       <AppNavbar />
 
-      <main class="flex-grow-1 overflow-auto p-4 bg-light">
+      <main class="flex-grow-1 overflow-auto bg-light" style="padding: 1rem;">
         <router-view />
       </main>
     </div>
 
-    <template v-if="isAuthenticated">
-      <ChatBotBubble @abrirFormulario="onAbrirFormulario" />
-
-      <CrearTicketModal
-        v-if="mostrarCrearTicket"
-        :prefill="prefillTicket"
-        @close="mostrarCrearTicket = false"
-        @creado="mostrarCrearTicket = false"
-      />
-    </template>
+    <ChatBotBubble v-if="mostrarChatbot" />
 
     <LoginModal v-if="showLoginModal" />
 
@@ -28,24 +19,18 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { useStore } from 'vuex'
-import AppSidebar        from '@/components/layout/AppSidebar.vue'
-import AppNavbar         from '@/components/layout/AppNavbar.vue'
-import LoginModal        from '@/components/layout/LoginModal.vue'
-import ChatBotBubble     from '@/components/ui/ChatBotBubble.vue'
-import CrearTicketModal  from '@/components/tickets/CrearTicketModal.vue'
+import AppSidebar    from '@/components/layout/AppSidebar.vue'
+import AppNavbar     from '@/components/layout/AppNavbar.vue'
+import LoginModal    from '@/components/layout/LoginModal.vue'
+import ChatBotBubble from '@/components/ui/ChatBotBubble.vue'
 
 const store = useStore()
 
 const isAuthenticated = computed(() => store.getters['auth/isAuthenticated'])
 const showLoginModal  = computed(() => store.getters['auth/showLoginModal'])
+const rol             = computed(() => store.getters['auth/rol'])
 
-const mostrarCrearTicket = ref(false)
-const prefillTicket      = ref({})
-
-function onAbrirFormulario(datos) {
-  prefillTicket.value      = datos
-  mostrarCrearTicket.value = true
-}
+const mostrarChatbot = computed(() => !isAuthenticated.value || rol.value === 'cliente')
 </script>

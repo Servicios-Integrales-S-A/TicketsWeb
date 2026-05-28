@@ -5,20 +5,21 @@
     <ViewToolbar
       v-model="filtros.busqueda"
       search-placeholder="Buscar por nombre o email..."
-      search-width="240px"
+      search-width="270px"
     >
       <template #filters>
-        <select class="form-select" v-model="filtros.rol" @change="reiniciar" style="width: 155px;">
-          <option value="">Todos los roles</option>
-          <option value="admin">Administrador</option>
-          <option value="agente">Agente</option>
-          <option value="cliente">Cliente</option>
-        </select>
-        <select class="form-select" v-model="filtros.activo" @change="reiniciar" style="width: 145px;">
-          <option value="">Todos los estados</option>
-          <option value="true">Activos</option>
-          <option value="false">Inactivos</option>
-        </select>
+        <FilterSelect
+          v-model="filtros.rol"
+          :options="ROL_FILTER"
+          width="160px"
+          @change="reiniciar"
+        />
+        <FilterSelect
+          v-model="filtros.activo"
+          :options="ACTIVO_FILTER"
+          width="160px"
+          @change="reiniciar"
+        />
       </template>
       <template #actions>
         <button class="btn btn-primary" @click="mostrarCrear = true">
@@ -60,20 +61,33 @@
       </template>
 
       <template #footer>
-        <div v-if="totalPaginas > 1" class="d-flex justify-content-center py-3 gap-1">
-          <button class="btn btn-sm btn-outline-secondary" :disabled="pagina === 1" @click="cambiarPagina(pagina - 1)">
-            <i class="bi bi-chevron-left"></i>
-          </button>
-          <button
-            v-for="p in totalPaginas"
-            :key="p"
-            class="btn btn-sm"
-            :class="p === pagina ? 'btn-primary' : 'btn-outline-secondary'"
-            @click="cambiarPagina(p)"
-          >{{ p }}</button>
-          <button class="btn btn-sm btn-outline-secondary" :disabled="pagina === totalPaginas" @click="cambiarPagina(pagina + 1)">
-            <i class="bi bi-chevron-right"></i>
-          </button>
+        <div v-if="totalPaginas > 1" class="d-flex align-items-center justify-content-between py-2 px-1 gap-2">
+          <span class="text-muted small">{{ infoUsuarios }}</span>
+          <div class="d-flex gap-1">
+            <button class="btn btn-sm btn-outline-secondary" :disabled="pagina === 1" @click="cambiarPagina(pagina - 1)">
+              <i class="bi bi-chevron-left"></i>
+            </button>
+            <button
+              v-for="p in totalPaginas"
+              :key="p"
+              class="btn btn-sm"
+              :class="p === pagina ? 'btn-primary' : 'btn-outline-secondary'"
+              @click="cambiarPagina(p)"
+            >{{ p }}</button>
+            <button class="btn btn-sm btn-outline-secondary" :disabled="pagina === totalPaginas" @click="cambiarPagina(pagina + 1)">
+              <i class="bi bi-chevron-right"></i>
+            </button>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="text-muted small">Mostrar</span>
+            <select class="form-select form-select-sm" style="width: 72px;" v-model="porPagina" @change="cambiarTamano">
+              <option :value="10">10</option>
+              <option :value="15">15</option>
+              <option :value="20">20</option>
+              <option :value="50">50</option>
+            </select>
+            <span class="text-muted small">por página</span>
+          </div>
         </div>
       </template>
     </AppTable>
@@ -97,10 +111,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import api from '@/api/axios'
 import AppTable           from '@/components/ui/AppTable.vue'
 import ViewToolbar        from '@/components/ui/ViewToolbar.vue'
+import FilterSelect       from '@/components/ui/FilterSelect.vue'
 import CrearUsuarioModal  from '@/components/usuarios/CrearUsuarioModal.vue'
 import UsuarioDetailModal from '@/components/usuarios/UsuarioDetailModal.vue'
 
@@ -108,6 +123,8 @@ const usuarios            = ref([])
 const cargando            = ref(false)
 const pagina              = ref(1)
 const totalPaginas        = ref(1)
+const totalUsuarios       = ref(0)
+const porPagina           = ref(15)
 const mostrarCrear        = ref(false)
 const usuarioSeleccionado = ref(null)
 
@@ -121,6 +138,13 @@ const columnas = [
   { key: 'creado_en', label: 'Registro',  cellClass: 'text-muted' },
 ]
 
+const infoUsuarios = computed(() => {
+  if (totalUsuarios.value === 0) return ''
+  const desde = (pagina.value - 1) * porPagina.value + 1
+  const hasta  = Math.min(pagina.value * porPagina.value, totalUsuarios.value)
+  return `${desde}–${hasta} de ${totalUsuarios.value}`
+})
+
 let debounceTimer = null
 watch(() => filtros.busqueda, () => {
   clearTimeout(debounceTimer)
@@ -132,13 +156,14 @@ const reiniciar = () => { pagina.value = 1; cargarUsuarios() }
 const cargarUsuarios = async () => {
   cargando.value = true
   try {
-    const params = { page: pagina.value, limit: 15 }
+    const params = { page: pagina.value, limit: porPagina.value }
     if (filtros.busqueda) params.search = filtros.busqueda
     if (filtros.rol)      params.rol    = filtros.rol
     if (filtros.activo)   params.activo = filtros.activo
     const { data } = await api.get('/api/usuarios', { params })
     usuarios.value     = data.datos
     totalPaginas.value = data.paginacion.paginas
+    totalUsuarios.value = data.paginacion.total
   } catch {
     usuarios.value = []
   } finally {
@@ -147,8 +172,21 @@ const cargarUsuarios = async () => {
 }
 
 const cambiarPagina = (p) => { pagina.value = p; cargarUsuarios() }
+const cambiarTamano = () => { pagina.value = 1; cargarUsuarios() }
 const abrirDetalle  = (id) => { usuarioSeleccionado.value = id }
 const onCreado      = () => { mostrarCrear.value = false; cargarUsuarios() }
+
+const ROL_FILTER    = [
+  { value: '',        label: 'Todos los roles' },
+  { value: 'admin',   label: 'Administrador' },
+  { value: 'agente',  label: 'Agente' },
+  { value: 'cliente', label: 'Cliente' },
+]
+const ACTIVO_FILTER = [
+  { value: '',      label: 'Todos los estados' },
+  { value: 'true',  label: 'Activos' },
+  { value: 'false', label: 'Inactivos' },
+]
 
 const ROL_LABEL = { admin: 'Administrador', agente: 'Agente', cliente: 'Cliente' }
 const ROL_BADGE = { admin: 'bg-danger', agente: 'bg-primary', cliente: 'bg-secondary' }

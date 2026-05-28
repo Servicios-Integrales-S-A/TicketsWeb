@@ -8,11 +8,12 @@
       search-width="240px"
     >
       <template #filters>
-        <select class="form-select" v-model="filtros.activo" @change="reiniciar" style="width: 145px;">
-          <option value="">Todos los estados</option>
-          <option value="true">Activas</option>
-          <option value="false">Inactivas</option>
-        </select>
+        <FilterSelect
+          v-model="filtros.activo"
+          :options="ACTIVO_FILTER"
+          width="160px"
+          @change="reiniciar"
+        />
       </template>
       <template #actions>
         <button class="btn btn-primary" @click="abrirModal(null)">
@@ -50,20 +51,33 @@
       </template>
 
       <template #footer>
-        <div v-if="totalPaginas > 1" class="d-flex justify-content-center py-3 gap-1">
-          <button class="btn btn-sm btn-outline-secondary" :disabled="pagina === 1" @click="cambiarPagina(pagina - 1)">
-            <i class="bi bi-chevron-left"></i>
-          </button>
-          <button
-            v-for="p in totalPaginas"
-            :key="p"
-            class="btn btn-sm"
-            :class="p === pagina ? 'btn-primary' : 'btn-outline-secondary'"
-            @click="cambiarPagina(p)"
-          >{{ p }}</button>
-          <button class="btn btn-sm btn-outline-secondary" :disabled="pagina === totalPaginas" @click="cambiarPagina(pagina + 1)">
-            <i class="bi bi-chevron-right"></i>
-          </button>
+        <div v-if="totalPaginas > 1" class="d-flex align-items-center justify-content-between py-2 px-1 gap-2">
+          <span class="text-muted small">{{ infoCategorias }}</span>
+          <div class="d-flex gap-1">
+            <button class="btn btn-sm btn-outline-secondary" :disabled="pagina === 1" @click="cambiarPagina(pagina - 1)">
+              <i class="bi bi-chevron-left"></i>
+            </button>
+            <button
+              v-for="p in totalPaginas"
+              :key="p"
+              class="btn btn-sm"
+              :class="p === pagina ? 'btn-primary' : 'btn-outline-secondary'"
+              @click="cambiarPagina(p)"
+            >{{ p }}</button>
+            <button class="btn btn-sm btn-outline-secondary" :disabled="pagina === totalPaginas" @click="cambiarPagina(pagina + 1)">
+              <i class="bi bi-chevron-right"></i>
+            </button>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="text-muted small">Mostrar</span>
+            <select class="form-select form-select-sm" style="width: 72px;" v-model="porPagina" @change="cambiarTamano">
+              <option :value="10">10</option>
+              <option :value="15">15</option>
+              <option :value="20">20</option>
+              <option :value="50">50</option>
+            </select>
+            <span class="text-muted small">por página</span>
+          </div>
         </div>
       </template>
     </AppTable>
@@ -80,17 +94,20 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import api from '@/api/axios'
 import AppTable       from '@/components/ui/AppTable.vue'
 import ViewToolbar    from '@/components/ui/ViewToolbar.vue'
+import FilterSelect   from '@/components/ui/FilterSelect.vue'
 import CategoriaModal from '@/components/categorias/CategoriaModal.vue'
 
-const categorias          = ref([])
-const cargando            = ref(false)
-const pagina              = ref(1)
-const totalPaginas        = ref(1)
-const modalAbierto        = ref(false)
+const categorias            = ref([])
+const cargando              = ref(false)
+const pagina                = ref(1)
+const totalPaginas          = ref(1)
+const totalCategorias       = ref(0)
+const porPagina             = ref(15)
+const modalAbierto          = ref(false)
 const categoriaSeleccionada = ref(null)
 
 const filtros = reactive({ busqueda: '', activo: '' })
@@ -101,6 +118,13 @@ const columnas = [
   { key: 'activo',            label: 'Estado' },
   { key: 'creado_en',         label: 'Creada', cellClass: 'text-muted' },
 ]
+
+const infoCategorias = computed(() => {
+  if (totalCategorias.value === 0) return ''
+  const desde = (pagina.value - 1) * porPagina.value + 1
+  const hasta  = Math.min(pagina.value * porPagina.value, totalCategorias.value)
+  return `${desde}–${hasta} de ${totalCategorias.value}`
+})
 
 let debounceTimer = null
 watch(() => filtros.busqueda, () => {
@@ -113,12 +137,13 @@ const reiniciar = () => { pagina.value = 1; cargarCategorias() }
 const cargarCategorias = async () => {
   cargando.value = true
   try {
-    const params = { page: pagina.value, limit: 15 }
+    const params = { page: pagina.value, limit: porPagina.value }
     if (filtros.busqueda) params.search = filtros.busqueda
     if (filtros.activo)   params.activo = filtros.activo
     const { data } = await api.get('/api/categorias', { params })
-    categorias.value   = data.datos
-    totalPaginas.value = data.paginacion.paginas
+    categorias.value    = data.datos
+    totalPaginas.value  = data.paginacion.paginas
+    totalCategorias.value = data.paginacion.total
   } catch {
     categorias.value = []
   } finally {
@@ -127,11 +152,18 @@ const cargarCategorias = async () => {
 }
 
 const cambiarPagina = (p) => { pagina.value = p; cargarCategorias() }
+const cambiarTamano = () => { pagina.value = 1; cargarCategorias() }
 
 const abrirModal = (id) => {
   categoriaSeleccionada.value = id
   modalAbierto.value = true
 }
+
+const ACTIVO_FILTER = [
+  { value: '',      label: 'Todos los estados' },
+  { value: 'true',  label: 'Activas' },
+  { value: 'false', label: 'Inactivas' },
+]
 
 const PRIOR_LABEL = { bajo: 'Bajo', medio: 'Medio', alto: 'Alto', critico: 'Crítico' }
 const PRIOR_BADGE = { bajo: 'bg-secondary', medio: 'bg-info text-dark', alto: 'bg-warning text-dark', critico: 'bg-danger' }
