@@ -10,8 +10,18 @@
               v-for="col in columns"
               :key="col.key"
               :style="col.width ? { width: col.width } : {}"
-              :class="col.headerClass"
-            >{{ col.label }}</th>
+              :class="[col.headerClass, { 'th-sortable': col.sortable }]"
+              @click="col.sortable ? $emit('sort', col.key) : null"
+            >
+              <span class="th-content">
+                {{ col.label }}
+                <span v-if="col.sortable" class="th-sort">
+                  <i v-if="sortBy === col.key && sortDir === 'asc'"  class="bi bi-caret-up-fill th-sort--active"></i>
+                  <i v-else-if="sortBy === col.key && sortDir === 'desc'" class="bi bi-caret-down-fill th-sort--active"></i>
+                  <i v-else class="bi bi-arrow-down-up th-sort--idle"></i>
+                </span>
+              </span>
+            </th>
           </tr>
         </thead>
 
@@ -66,9 +76,11 @@ defineProps({
   clickable: { type: Boolean, default: false },
   striped:   { type: Boolean, default: false },
   counter:   { type: Boolean, default: true  },
+  sortBy:    { type: String,  default: '' },
+  sortDir:   { type: String,  default: 'asc' },
 })
 
-defineEmits(['row-click'])
+defineEmits(['row-click', 'sort'])
 </script>
 
 <style scoped>
@@ -79,4 +91,22 @@ defineEmits(['row-click'])
 .app-table--striped :deep(tbody tr:nth-child(even)) {
   background-color: rgba(13, 110, 253, 0.05);
 }
+
+.th-sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.th-sortable:hover { background-color: #e9ecef; }
+
+.th-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.th-sort { font-size: 0.65rem; line-height: 1; }
+.th-sort--idle   { opacity: 0.3; }
+.th-sort--active { color: #0d6efd; opacity: 1; }
+
 </style>

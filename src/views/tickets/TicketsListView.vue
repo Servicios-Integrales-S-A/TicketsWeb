@@ -8,20 +8,30 @@
       search-width="220px"
     >
       <template #filters>
-        <select class="form-select" v-model="filtros.estado" @change="cargarTickets" style="width: 160px;">
-          <option value="">Todos los estados</option>
-          <option value="abierto">Abierto</option>
-          <option value="en_progreso">En progreso</option>
-          <option value="resuelto">Resuelto</option>
-          <option value="cerrado">Cerrado</option>
-        </select>
-        <select v-if="!esCliente" class="form-select" v-model="filtros.prioridad" @change="cargarTickets" style="width: 170px;">
-          <option value="">Todas las prioridades</option>
-          <option value="bajo">Bajo</option>
-          <option value="medio">Medio</option>
-          <option value="alto">Alto</option>
-          <option value="critico">Crítico</option>
-        </select>
+        <FilterSelect
+          v-model="filtros.estado"
+          @change="cargarTickets"
+          :options="ESTADO_FILTER"
+          width="160px"
+        />
+        <FilterSelect
+          v-if="!esCliente"
+          v-model="filtros.prioridad"
+          @change="cargarTickets"
+          :options="PRIOR_FILTER"
+          width="170px"
+        />
+        <div v-if="!esCliente" class="form-check form-switch mb-0 d-flex align-items-center gap-2" style="white-space: nowrap;">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            role="switch"
+            id="filtro-sin-agente"
+            v-model="filtros.sinAgente"
+            @change="cargarTickets"
+          />
+          <label class="form-check-label" for="filtro-sin-agente">Sin agente</label>
+        </div>
       </template>
       <template #actions>
         <div v-if="!esCliente" class="btn-toolbar" role="toolbar">
@@ -58,9 +68,12 @@
       :columns="columnas"
       :rows="ticketsFiltrados"
       :loading="cargando"
+      :sort-by="ordenarPor"
+      :sort-dir="ordenDir"
       empty-text="No hay tickets para mostrar."
       clickable
       @row-click="row => irDetalle(row.id)"
+      @sort="handleSort"
     >
       <template #col-titulo="{ row }">
         <div class="fw-medium">{{ row.titulo }}</div>
@@ -135,20 +148,39 @@
       </template>
 
       <template #footer>
-        <div v-if="totalPaginas > 1" class="d-flex justify-content-center py-3 gap-1">
-          <button class="btn btn-sm btn-outline-secondary" :disabled="pagina === 1" @click="cambiarPagina(pagina - 1)">
-            <i class="bi bi-chevron-left"></i>
-          </button>
-          <button
-            v-for="p in totalPaginas"
-            :key="p"
-            class="btn btn-sm"
-            :class="p === pagina ? 'btn-primary' : 'btn-outline-secondary'"
-            @click="cambiarPagina(p)"
-          >{{ p }}</button>
-          <button class="btn btn-sm btn-outline-secondary" :disabled="pagina === totalPaginas" @click="cambiarPagina(pagina + 1)">
-            <i class="bi bi-chevron-right"></i>
-          </button>
+        <div class="d-flex align-items-center justify-content-between py-2 px-1 gap-2 footer-bar">
+          <!-- Info -->
+          <span class="footer-info">{{ infoTickets }}</span>
+
+          <!-- Paginación -->
+          <div v-if="totalPaginas > 1" class="d-flex gap-1">
+            <button class="btn btn-sm btn-outline-secondary" :disabled="pagina === 1" @click="cambiarPagina(pagina - 1)">
+              <i class="bi bi-chevron-left"></i>
+            </button>
+            <button
+              v-for="p in totalPaginas"
+              :key="p"
+              class="btn btn-sm"
+              :class="p === pagina ? 'btn-primary' : 'btn-outline-secondary'"
+              @click="cambiarPagina(p)"
+            >{{ p }}</button>
+            <button class="btn btn-sm btn-outline-secondary" :disabled="pagina === totalPaginas" @click="cambiarPagina(pagina + 1)">
+              <i class="bi bi-chevron-right"></i>
+            </button>
+          </div>
+          <div v-else></div>
+
+          <!-- Tamaño de página -->
+          <div class="d-flex align-items-center gap-2 footer-size">
+            <span>Mostrar</span>
+            <select class="form-select form-select-sm size-select" v-model="porPagina" @change="cambiarTamano">
+              <option :value="10">10</option>
+              <option :value="20">20</option>
+              <option :value="50">50</option>
+              <option :value="100">100</option>
+            </select>
+            <span>por página</span>
+          </div>
         </div>
       </template>
     </AppTable>
@@ -184,6 +216,7 @@ import api from '@/api/axios'
 import AppTable          from '@/components/ui/AppTable.vue'
 import ViewToolbar       from '@/components/ui/ViewToolbar.vue'
 import ColorBadgeSelect  from '@/components/ui/ColorBadgeSelect.vue'
+import FilterSelect      from '@/components/ui/FilterSelect.vue'
 import TicketDetailModal from '@/views/tickets/TicketDetailModal.vue'
 import TicketsBoardView  from '@/components/tickets/TicketsBoardView.vue'
 
@@ -193,6 +226,7 @@ const store  = useStore()
 
 const rol       = computed(() => store.getters['auth/rol'])
 const esCliente = computed(() => rol.value === 'cliente')
+const esAdmin   = computed(() => rol.value === 'admin')
 
 const tickets      = ref([])
 const agentes      = ref([])
@@ -200,29 +234,53 @@ const categorias   = ref([])
 const cargando     = ref(false)
 const pagina       = ref(1)
 const totalPaginas = ref(1)
+const totalTickets = ref(0)
+const porPagina    = ref(20)
+const ordenarPor   = ref('prioridad')
+const ordenDir     = ref('asc')
 const mostrarCrear = ref(false)
 const vista        = ref('lista')
+
+const SORT_DEFAULT_DIR = { creado_en: 'desc' }
+
+const handleSort = (key) => {
+  if (ordenarPor.value === key) {
+    ordenDir.value = ordenDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    ordenarPor.value = key
+    ordenDir.value = SORT_DEFAULT_DIR[key] ?? 'asc'
+  }
+  pagina.value = 1
+  cargarTickets()
+}
 
 watch(vista, () => {
   pagina.value = 1
   cargarTickets()
 })
 
+const infoTickets = computed(() => {
+  if (totalTickets.value === 0) return ''
+  const desde = (pagina.value - 1) * porPagina.value + 1
+  const hasta  = Math.min(pagina.value * porPagina.value, totalTickets.value)
+  return `${desde}–${hasta} de ${totalTickets.value}`
+})
+
 watch(() => route.name, (to, from) => {
   if (from === 'tickets-detalle' && to === 'tickets') cargarTickets()
 })
 
-const filtros = reactive({ busqueda: '', estado: '', prioridad: '' })
+const filtros = reactive({ busqueda: '', estado: '', prioridad: '', sinAgente: false })
 
 const columnas = computed(() => [
   { key: 'titulo',    label: 'Título' },
-  { key: 'estado',    label: 'Estado' },
-  ...(!esCliente.value ? [{ key: 'prioridad', label: 'Prioridad' }] : []),
+  { key: 'estado',    label: 'Estado',    sortable: true },
+  ...(!esCliente.value ? [{ key: 'prioridad', label: 'Prioridad', sortable: true }] : []),
   { key: 'categoria', label: 'Categoría' },
-  ...(!esCliente.value ? [{ key: 'cliente', label: 'Cliente', cellClass: 'text-muted' }] : []),
+  ...(!esCliente.value ? [{ key: 'cliente',   label: 'Cliente',   cellClass: 'text-muted' }] : []),
   { key: 'agente',    label: 'Agente' },
-  { key: 'creado_en', label: 'Fecha', cellClass: 'text-muted' },
-  { key: '_acciones', label: '', width: '48px' },
+  { key: 'creado_en', label: 'Fecha',     sortable: true, cellClass: 'text-muted' },
+  { key: '_acciones', label: '',          width: '48px' },
 ])
 
 const ticketsFiltrados = computed(() => {
@@ -272,12 +330,18 @@ const hideTicket = async (id) => {
 const cargarTickets = async () => {
   cargando.value = true
   try {
-    const params = { page: pagina.value, limit: vista.value === 'board' ? 200 : 20 }
+    const params = { page: pagina.value, limit: vista.value === 'board' ? 200 : porPagina.value }
     if (filtros.estado)    params.estado    = filtros.estado
     if (filtros.prioridad) params.prioridad = filtros.prioridad
+    if (filtros.sinAgente) params.sin_agente = 'true'
+    if (vista.value === 'lista') {
+      params.orderBy  = ordenarPor.value
+      params.orderDir = ordenDir.value
+    }
     const { data } = await api.get('/api/tickets', { params })
     tickets.value      = data.datos
     totalPaginas.value = data.paginacion.paginas
+    totalTickets.value = data.paginacion.total
   } catch {
     tickets.value = []
   } finally {
@@ -287,6 +351,11 @@ const cargarTickets = async () => {
 
 const cambiarPagina = (p) => {
   pagina.value = p
+  cargarTickets()
+}
+
+const cambiarTamano = () => {
+  pagina.value = 1
   cargarTickets()
 }
 
@@ -307,6 +376,24 @@ onMounted(() => {
 })
 
 // ── Helpers de badges ──────────────────────────────────────────────────────
+
+// ── Opciones para FilterSelect (dropdowns de filtro) ─────────────────────
+
+const ESTADO_FILTER = [
+  { value: '',            label: 'Todos los estados' },
+  { value: 'abierto',     label: 'Abierto' },
+  { value: 'en_progreso', label: 'En progreso' },
+  { value: 'resuelto',    label: 'Resuelto' },
+  { value: 'cerrado',     label: 'Cerrado' },
+]
+
+const PRIOR_FILTER = [
+  { value: '',        label: 'Todas las prioridades' },
+  { value: 'bajo',    label: 'Bajo' },
+  { value: 'medio',   label: 'Medio' },
+  { value: 'alto',    label: 'Alto' },
+  { value: 'critico', label: 'Crítico' },
+]
 
 // ── Opciones para ColorBadgeSelect ────────────────────────────────────────
 
@@ -355,5 +442,28 @@ const formatFecha = f =>
   border-color: #dee2e6;
   background: #fff;
   outline: none;
+}
+
+.footer-bar {
+  min-height: 48px;
+}
+
+.footer-info {
+  font-size: 0.82rem;
+  color: #6c757d;
+  min-width: 100px;
+}
+
+.footer-size {
+  font-size: 0.82rem;
+  color: #6c757d;
+  min-width: 100px;
+  justify-content: flex-end;
+}
+
+.size-select {
+  width: auto;
+  min-width: 64px;
+  font-size: 0.82rem;
 }
 </style>
