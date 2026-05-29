@@ -11,6 +11,8 @@
         <small class="text-muted text-capitalize">{{ rol }}</small>
       </div>
 
+      <NotificacionesBell />
+
       <div class="dropdown">
         <button
           class="btn btn-light btn-sm rounded-circle p-0 d-flex align-items-center justify-content-center"
@@ -50,6 +52,7 @@
 import { computed } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter, useRoute } from 'vue-router'
+import NotificacionesBell from '@/components/layout/NotificacionesBell.vue'
 
 const store  = useStore()
 const router = useRouter()
